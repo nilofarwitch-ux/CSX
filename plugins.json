@@ -101,7 +101,7 @@
             "Faisal"
         ],
         "description": "Netflix, PrimeVideo, Disney+ Hotstar Contents in Multiple Languages",
-        "fileSize": 105579,
+        "fileSize": 101358,
         "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
         "language": "hi",
         "tvTypes": [
@@ -110,7 +110,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/Faisal0786/Desi/main/Icons/2504929.png",
         "apiVersion": 1,
-        "fileHash": "sha256-83bc693ba8d34b9ce7cf6d2bb5f9b19507da0c04d626ac41eddfba34e0ea4ce7"
+        "fileHash": "sha256-acc184e2640ef328b7b4cdaaa9ceff38b02c025db09894a84aa33bcddb29e3bb"
     },
     {
         "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/VegaMovies.cs3",
