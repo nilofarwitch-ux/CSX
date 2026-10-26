@@ -1,6 +1,6 @@
 [
     {
-        "url": "https://raw.githubusercontent.com/SaurabhKaperwan/CSX/builds/Bollyflix.cs3",
+        "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/Bollyflix.cs3",
         "status": 1,
         "version": 33,
         "name": "Bollyflix",
@@ -9,8 +9,8 @@
             "megix"
         ],
         "description": "Movies and Series upto 4K",
-        "fileSize": 38129,
-        "repositoryUrl": "https://github.com/SaurabhKaperwan/CSX",
+        "fileSize": 38226,
+        "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
         "language": "hi",
         "tvTypes": [
             "TvSeries",
@@ -20,10 +20,10 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SaurabhKaperwan/CSX/refs/heads/master/Bollyflix/icon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-507b486b195b98903b0cec0fca811c27fdff6cf200f6f94a662c64dd8abe0e59"
+        "fileHash": "sha256-bcd71ae4b3b4638e0c8f5e8077d698f84beba2c90162f13ff3cfeb1e1a1dc36f"
     },
     {
-        "url": "https://raw.githubusercontent.com/SaurabhKaperwan/CSX/builds/CineStream.cs3",
+        "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/CineStream.cs3",
         "status": 1,
         "version": 487,
         "name": "CineStream",
@@ -32,8 +32,8 @@
             "megix"
         ],
         "description": "One stop solution for Movies, Series, Anime, AsianDrama and Torrents",
-        "fileSize": 695013,
-        "repositoryUrl": "https://github.com/SaurabhKaperwan/CSX",
+        "fileSize": 696064,
+        "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
         "language": "en",
         "tvTypes": [
             "TvSeries",
@@ -44,10 +44,10 @@
         ],
         "iconUrl": "https://github.com/SaurabhKaperwan/CSX/raw/refs/heads/master/CineStream/icon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-30dc643628702d6b2fe139339e59996783c95a0c1d41efe0a31872ae4d10908b"
+        "fileHash": "sha256-eff689245a9ebffa4ee5a1128d4e5c8faade3fa3e861281ac7ad7bdbf804cd88"
     },
     {
-        "url": "https://raw.githubusercontent.com/SaurabhKaperwan/CSX/builds/MoviesDrive.cs3",
+        "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/MoviesDrive.cs3",
         "status": 1,
         "version": 33,
         "name": "MoviesDrive",
@@ -56,8 +56,8 @@
             "megix"
         ],
         "description": "High Quality Movies and TV Shows",
-        "fileSize": 47290,
-        "repositoryUrl": "https://github.com/SaurabhKaperwan/CSX",
+        "fileSize": 47389,
+        "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
         "language": "hi",
         "tvTypes": [
             "TvSeries",
@@ -67,10 +67,10 @@
         ],
         "iconUrl": "https://github.com/SaurabhKaperwan/CSX/raw/refs/heads/master/MoviesDrive/icon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-52758210caa1cf0a6dc929d0f73fec5919e0ab66e5eddf6386ed30f7c771980a"
+        "fileHash": "sha256-860b1624240a77737f1ba3f19e1d38927806ec7c4ee779551d77b21bc9a4c347"
     },
     {
-        "url": "https://raw.githubusercontent.com/SaurabhKaperwan/CSX/builds/Moviesmod.cs3",
+        "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/Moviesmod.cs3",
         "status": 1,
         "version": 33,
         "name": "Moviesmod",
@@ -79,8 +79,8 @@
             "megix"
         ],
         "description": "Includes Topmovies",
-        "fileSize": 44518,
-        "repositoryUrl": "https://github.com/SaurabhKaperwan/CSX",
+        "fileSize": 44551,
+        "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
         "tvTypes": [
             "TvSeries",
             "Movie",
@@ -89,10 +89,31 @@
         ],
         "iconUrl": "https://github.com/SaurabhKaperwan/CSX/raw/refs/heads/master/Moviesmod/icon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-9433fd970480a53f52f3ec4b49d3213c7bda5a26b109dc80ef82cd2ec13a37a7"
+        "fileHash": "sha256-41db331db855a9fbd371ddd25bb959e1bc5c720643fcf2177228e585adb34ede"
     },
     {
-        "url": "https://raw.githubusercontent.com/SaurabhKaperwan/CSX/builds/VegaMovies.cs3",
+        "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/Ott.cs3",
+        "status": 1,
+        "version": 2,
+        "name": "Ott",
+        "internalName": "Ott",
+        "authors": [
+            "Faisal"
+        ],
+        "description": "Netflix, PrimeVideo, Disney+ Hotstar Contents in Multiple Languages",
+        "fileSize": 94961,
+        "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
+        "language": "hi",
+        "tvTypes": [
+            "Movie",
+            "TvSeries"
+        ],
+        "iconUrl": "https://raw.githubusercontent.com/Faisal0786/Desi/main/Icons/2504929.png",
+        "apiVersion": 1,
+        "fileHash": "sha256-4d2919c764a2fe1638d00ca088c4e27be1b42a6d9756f3a3e6a49f88cb4cf8e5"
+    },
+    {
+        "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/VegaMovies.cs3",
         "status": 1,
         "version": 82,
         "name": "VegaMovies",
@@ -101,8 +122,8 @@
             "megix"
         ],
         "description": "Includes LuxMovies, Rogmovies",
-        "fileSize": 41565,
-        "repositoryUrl": "https://github.com/SaurabhKaperwan/CSX",
+        "fileSize": 41653,
+        "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
         "language": "hi",
         "tvTypes": [
             "TvSeries",
@@ -112,6 +133,6 @@
         ],
         "iconUrl": "https://github.com/SaurabhKaperwan/CSX/raw/refs/heads/master/VegaMovies/icon.jpg",
         "apiVersion": 1,
-        "fileHash": "sha256-b78635ef4f2f66c134184552fe5e4956cc02ec1c5ce6d6811cccfd3747367883"
+        "fileHash": "sha256-4a27739053a54257e59ad7bfaa9bff50ea828fcbc9105d085dd96ed7e2a208f5"
     }
 ]
