@@ -94,14 +94,14 @@
     {
         "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/Ott.cs3",
         "status": 1,
-        "version": 2,
+        "version": 3,
         "name": "Ott",
         "internalName": "Ott",
         "authors": [
             "Faisal"
         ],
         "description": "Netflix, PrimeVideo, Disney+ Hotstar Contents in Multiple Languages",
-        "fileSize": 94961,
+        "fileSize": 105579,
         "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
         "language": "hi",
         "tvTypes": [
@@ -110,7 +110,7 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/Faisal0786/Desi/main/Icons/2504929.png",
         "apiVersion": 1,
-        "fileHash": "sha256-4d2919c764a2fe1638d00ca088c4e27be1b42a6d9756f3a3e6a49f88cb4cf8e5"
+        "fileHash": "sha256-83bc693ba8d34b9ce7cf6d2bb5f9b19507da0c04d626ac41eddfba34e0ea4ce7"
     },
     {
         "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/VegaMovies.cs3",
