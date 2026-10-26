@@ -16,6 +16,8 @@ import org.json.JSONArray
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 
+import java.net.URLEncoder
+
 class PrimeVideoMirrorProvider : MainAPI() {
 
     companion object {
@@ -30,10 +32,8 @@ class PrimeVideoMirrorProvider : MainAPI() {
     )
 
     override var lang = "hi"
-
     override var mainUrl = "https://net52.cc"
     override var name = "Prime Video"
-
     override val hasMainPage = true
 
     private val ott = "pv"
@@ -318,7 +318,7 @@ runCatching {
     ): List<SearchResponse> {
 
         val encodedQuery =
-            java.net.URLEncoder.encode(
+            URLEncoder.encode(
                 query,
                 Charsets.UTF_8.name()
             )
@@ -678,24 +678,28 @@ runCatching {
         return episodes
     }
 
+    // ⭐ CHANGED: playlistUrl mein t=<title> param add
     private fun playlistUrl(
-        id: String
+        id: String,
+        title: String
     ): String {
-
+        val encodedTitle = URLEncoder.encode(title, "UTF-8")
         return contentPath(
             "playlist.php" +
             "?id=$id" +
+            "&t=$encodedTitle" +
             "&tm=${System.currentTimeMillis() / 1000}"
         )
     }
 
+    // ⭐ CHANGED: X-Requested-With → app.netmirror.nmv2
     private fun playlistHeaders(): Map<String, String> {
 
         return mapOf(
             "Accept" to "*/*",
             "Referer" to mobileHomeUrl,
             "User-Agent" to defaultUa,
-            "X-Requested-With" to "app.netmirror.netmirrornew",
+            "X-Requested-With" to "app.netmirror.nmv2",
             "Sec-Fetch-Dest" to "empty",
             "Sec-Fetch-Mode" to "cors",
             "Sec-Fetch-Site" to "same-origin"
@@ -798,8 +802,9 @@ runCatching {
             return false
         }
 
+        // ⭐ CHANGED: title pass karo playlistUrl ko
         val url =
-            playlistUrl(id)
+            playlistUrl(id, loadData.title)
 
         var response =
             app.get(
@@ -931,12 +936,13 @@ runCatching {
                         sources.optJSONObject(j)
                             ?: continue
 
+                    val rawFile =
+                        source.optString(
+                            "file"
+                        ).replace("\\", "")
+
                     val file =
-                        fixNetMirrorUrl(
-                            source.optString(
-                                "file"
-                            )
-                        )
+                        fixNetMirrorUrl(rawFile)
 
                     if (file.isEmpty()) {
                         continue
@@ -965,14 +971,18 @@ runCatching {
                             "Video"
                         }
 
+                    // ⭐ CHANGED: URL q= se pehle quality try, fir label
                     val quality =
-                        Regex(
-                            """(\d{3,4})p"""
-                        )
-                            .find(label)
+                        Regex("""q=(\d{3,4})p""")
+                            .find(rawFile)
                             ?.groupValues
                             ?.getOrNull(1)
                             ?.toIntOrNull()
+                            ?: Regex("""(\d{3,4})p""")
+                                .find(label)
+                                ?.groupValues
+                                ?.getOrNull(1)
+                                ?.toIntOrNull()
                             ?: Qualities.Unknown.value
 
                     callback(
@@ -998,7 +1008,7 @@ runCatching {
                                 "Cookie" to sourceCookie,
                                 "Referer" to mobileHomeUrl,
                                 "X-Requested-With" to
-                                    "app.netmirror.netmirrornew",
+                                    "app.netmirror.nmv2",
                                 "Accept" to "*/*"
                             )
                         )
@@ -1012,7 +1022,7 @@ runCatching {
         return linksFound > 0
     }
 
-        @Suppress("ObjectLiteralToLambda")
+    @Suppress("ObjectLiteralToLambda")
     override fun getVideoInterceptor(
         extractorLink: ExtractorLink
     ): Interceptor {
@@ -1026,7 +1036,7 @@ runCatching {
                 url.contains(".ts", ignoreCase = true)
             ) {
                 val existingCookie = request.header("Cookie")
-                
+
                 val token = NetflixMirrorStorage.getValidCookie() ?: ""
 
                 val mediaCookie = if (!existingCookie.isNullOrEmpty()) {
@@ -1037,7 +1047,7 @@ runCatching {
 
                 val newRequest = request.newBuilder()
                     .header("Cookie", mediaCookie)
-                    .header("X-Requested-With", "app.netmirror.netmirrornew")
+                    .header("X-Requested-With", "app.netmirror.nmv2")
                     .header("Referer", mobileHomeUrl)
                     .header("User-Agent", defaultUa)
                     .header("Accept", "*/*")
