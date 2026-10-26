@@ -5,6 +5,7 @@ import OttSource.entities.EpisodesData
 import OttSource.entities.PostData
 import OttSource.entities.SearchData
 
+import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
@@ -25,17 +26,12 @@ class NetflixMirrorProvider : MainAPI() {
     }
 
     override val supportedTypes = setOf(
-        TvType.Movie,
-        TvType.TvSeries,
-        TvType.Anime,
-        TvType.AsianDrama
+        TvType.Movie, TvType.TvSeries, TvType.Anime, TvType.AsianDrama
     )
 
     override var lang = "hi"
-
     override var mainUrl = "https://net52.cc"
     override var name = "Netflix Hindi"
-
     override val hasMainPage = true
 
     private val defaultUa =
@@ -43,30 +39,22 @@ class NetflixMirrorProvider : MainAPI() {
         "AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 " +
         "Chrome/147.0.7727.55 Mobile Safari/537.36 /OS.Gatu v3.0"
 
-    private val mobileHomeUrl
-        get() = "$mainUrl/mobile/home?app=1"
+    private val mobileHomeUrl get() = "$mainUrl/mobile/home?app=1"
 
     private val browserHeaders = mapOf(
-        "Accept" to
-            "text/html,application/xhtml+xml,application/xml;q=0.9," +
+        "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9," +
             "image/avif,image/webp,image/apng,*/*;q=0.8," +
             "application/signed-exchange;v=b3;q=0.7",
-
         "Accept-Language" to "en-IN,en-US;q=0.9,en;q=0.8",
         "Cache-Control" to "max-age=0",
         "Connection" to "keep-alive",
-
-        "sec-ch-ua" to
-            "\"Not(A:Brand\";v=\"8\", \"Chromium\";v=\"144\", \"Android WebView\";v=\"144\"",
-
+        "sec-ch-ua" to "\"Not(A:Brand\";v=\"8\", \"Chromium\";v=\"144\", \"Android WebView\";v=\"144\"",
         "sec-ch-ua-mobile" to "?0",
         "sec-ch-ua-platform" to "\"Android\"",
-
         "Sec-Fetch-Dest" to "document",
         "Sec-Fetch-Mode" to "navigate",
         "Sec-Fetch-Site" to "same-origin",
         "Sec-Fetch-User" to "?1",
-
         "Upgrade-Insecure-Requests" to "1",
         "User-Agent" to defaultUa,
         "X-Requested-With" to "XMLHttpRequest"
@@ -79,60 +67,43 @@ class NetflixMirrorProvider : MainAPI() {
 
     private suspend fun getValidToken(): String {
         initStorage()
+        val (rawCookie, ts) = NetflixMirrorStorage.getCookie()
+        Log.d("NMDebug", "TOKEN rawCookie=${rawCookie?.take(80)} age=${System.currentTimeMillis() - ts}ms")
 
         val cached = NetflixMirrorStorage.getValidCookie()
-
         if (!cached.isNullOrEmpty()) {
+            Log.d("NMDebug", "TOKEN using CACHED=${cached.take(80)}")
             return cached
         }
-
-        return bypass(mainUrl)
+        Log.d("NMDebug", "TOKEN calling bypass(mainUrl)")
+        val result = bypass(mainUrl)
+        Log.d("NMDebug", "TOKEN bypass returned len=${result.length} val=${result.take(80)}")
+        return result
     }
 
     private fun siteCookies(token: String): Map<String, String> {
         return buildMap {
-            if (token.isNotEmpty()) {
-                put("t_hash_t", token)
-            }
-
+            if (token.isNotEmpty()) put("t_hash_t", token)
             put("ott", "nf")
             put("hd", "on")
         }
     }
 
     private fun isVerificationWall(
-        url: String,
-        body: String,
-        responseCode: Int,
-        responseUrl: String
+        url: String, body: String, responseCode: Int, responseUrl: String
     ): Boolean {
-
-        if (responseCode == 302) {
-            return true
-        }
-
-        if (responseUrl.contains("verify", ignoreCase = true)) {
-            return true
-        }
-
+        if (responseCode == 302) return true
+        if (responseUrl.contains("verify", ignoreCase = true)) return true
         if (url.contains("/mobile/home")) {
             val acceptedHome =
-                body.contains(
-                    "<title>Home - Android Mobile</title>",
-                    ignoreCase = true
-                ) ||
+                body.contains("<title>Home - Android Mobile</title>", ignoreCase = true) ||
                 body.contains("tray-container", ignoreCase = true) ||
                 body.contains("<article", ignoreCase = true)
-
             return !acceptedHome
         }
-
         if (url.contains(".php", ignoreCase = true)) {
-            return body
-                .trimStart()
-                .startsWith("<")
+            return body.trimStart().startsWith("<")
         }
-
         return false
     }
 
@@ -141,12 +112,10 @@ class NetflixMirrorProvider : MainAPI() {
         referer: String = mobileHomeUrl,
         extraHeaders: Map<String, String> = emptyMap()
     ): String {
-
         var token = getValidToken()
+        Log.d("NMDebug", "SITEGET url=$url token=${token.take(40)}")
 
-        fun requestHeaders(): Map<String, String> {
-            return browserHeaders + extraHeaders
-        }
+        fun requestHeaders() = browserHeaders + extraHeaders
 
         var response = app.get(
             url,
@@ -154,29 +123,20 @@ class NetflixMirrorProvider : MainAPI() {
             referer = referer,
             cookies = siteCookies(token)
         )
-
         var body = response.text
-
         val http = response.okhttpResponse
+        Log.d("NMDebug", "SITEGET [$url] status=${http.code} bodyLen=${body.length}")
 
-        val rejected = isVerificationWall(
-            url = url,
-            body = body,
-            responseCode = http.code,
-            responseUrl = http.request.url.toString()
-        )
+        val rejected = isVerificationWall(url, body, http.code, http.request.url.toString())
+        Log.d("NMDebug", "SITEGET rejected=$rejected")
 
-        if (!rejected) {
-            return body
-        }
+        if (!rejected) return body
 
+        Log.d("NMDebug", "SITEGET VERIFICATION WALL → force bypass")
         NetflixMirrorStorage.clearCookie()
-
         token = bypass(mainUrl, force = true)
-
-        if (token.isEmpty()) {
-            return body
-        }
+        Log.d("NMDebug", "SITEGET force bypass token len=${token.length} val=${token.take(60)}")
+        if (token.isEmpty()) return body
 
         response = app.get(
             url,
@@ -184,27 +144,16 @@ class NetflixMirrorProvider : MainAPI() {
             referer = referer,
             cookies = siteCookies(token)
         )
-
-        body = response.text
-
-        return body
+        return response.text
     }
 
-    private fun posterUrl(id: String): String {
-        return "https://imgcdn.kim/poster/v/$id.jpg"
-    }
+    private fun posterUrl(id: String): String = "https://imgcdn.kim/poster/v/$id.jpg"
 
-    private fun episodePosterUrl(id: String): String {
-        return "https://imgcdn.kim/epimg/150/$id.jpg"
-    }
+    private fun episodePosterUrl(id: String): String = "https://imgcdn.kim/epimg/150/$id.jpg"
 
     private fun fixNetMirrorUrl(raw: String): String {
-        val clean = raw
-            .replace("\\", "")
-            .trim()
-
+        val clean = raw.replace("\\", "").trim()
         if (clean.isEmpty()) return ""
-
         return when {
             clean.startsWith("http://", true) -> clean
             clean.startsWith("https://", true) -> clean
@@ -214,407 +163,174 @@ class NetflixMirrorProvider : MainAPI() {
         }
     }
 
-    override suspend fun getMainPage(
-        page: Int,
-        request: MainPageRequest
-    ): HomePageResponse? {
-runCatching {
-        DesiExtensionPopup.show()}
+    override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
+        runCatching { DesiExtensionPopup.show() }
 
-        val body = siteGet(
-            url = mobileHomeUrl,
-            referer = mobileHomeUrl
-        )
+        Log.d("NMDebug", "=== getMainPage page=$page ===")
+
+        val body = siteGet(url = mobileHomeUrl, referer = mobileHomeUrl)
+
+        Log.d("NMDebug", "HOME bodyLen=${body.length}")
+        Log.d("NMDebug", "HOME title=${Regex("<title>([^<]+)</title>").find(body)?.groupValues?.getOrNull(1)}")
+        Log.d("NMDebug", "HOME hasTrayContainer=${body.contains("tray-container")}")
+        Log.d("NMDebug", "HOME hasArticle=${body.contains("<article")}")
 
         val document = Jsoup.parse(body)
+        val containers = document.select(".tray-container, #top10")
+        Log.d("NMDebug", "HOME containersFound=${containers.size}")
 
-        val items = document
-            .select(".tray-container, #top10")
-            .map {
-                it.toHomePageList()
-            }
+        val items = containers.map { it.toHomePageList() }
+        Log.d("NMDebug", "HOME itemsBuilt=${items.size}")
+        items.forEachIndexed { i, list ->
+            Log.d("NMDebug", "HOME [$i] name='${list.name}' count=${list.list.size}")
+        }
 
-        return newHomePageResponse(
-            items,
-            false
-        )
+        return newHomePageResponse(items, false)
     }
 
     private fun Element.toHomePageList(): HomePageList {
-
-        val title =
-            select("h2, span")
-                .firstOrNull()
-                ?.text()
-                ?.trim()
-                .orEmpty()
-
-        val items =
-            select("article, .top10-post")
-                .mapNotNull {
-                    it.toSearchResult()
-                }
-
-        return HomePageList(
-            title,
-            items,
-            isHorizontalImages = false
-        )
+        val title = select("h2, span").firstOrNull()?.text()?.trim().orEmpty()
+        val items = select("article, .top10-post").mapNotNull { it.toSearchResult() }
+        return HomePageList(title, items, isHorizontalImages = false)
     }
 
     private fun Element.toSearchResult(): SearchResponse? {
-
         val id =
-            selectFirst("a")
-                ?.attr("data-post")
-                ?.takeIf { it.isNotBlank() }
-                ?: attr("data-post")
-                    .takeIf { it.isNotBlank() }
+            selectFirst("a")?.attr("data-post")?.takeIf { it.isNotBlank() }
+                ?: attr("data-post").takeIf { it.isNotBlank() }
                 ?: return null
 
-        return newAnimeSearchResponse(
-            "",
-            Id(id).toJson()
-        ) {
+        return newAnimeSearchResponse("", Id(id).toJson()) {
             posterUrl = posterUrl(id)
-
-            posterHeaders = mapOf(
-                "Referer" to "$mainUrl/home"
-            )
+            posterHeaders = mapOf("Referer" to "$mainUrl/home")
         }
     }
 
-    override suspend fun search(
-        query: String
-    ): List<SearchResponse> {
+    override suspend fun search(query: String): List<SearchResponse> {
+        val encodedQuery = URLEncoder.encode(query, Charsets.UTF_8.name())
+        val url = "$mainUrl/mobile/search.php?s=$encodedQuery&t=$unixTime"
+        val body = siteGet(url = url, referer = "$mainUrl/home")
 
-        val encodedQuery =
-            URLEncoder.encode(
-                query,
-                Charsets.UTF_8.name()
-            )
-
-        val url =
-            "$mainUrl/mobile/search.php" +
-            "?s=$encodedQuery&t=$unixTime"
-
-        val body = siteGet(
-            url = url,
-            referer = "$mainUrl/home"
-        )
-
-        val data =
-            try {
-                parseJson<SearchData>(body)
-            } catch (_: Exception) {
-                return emptyList()
-            }
+        val data = try { parseJson<SearchData>(body) } catch (_: Exception) { return emptyList() }
 
         return data.searchResult.map {
-            newAnimeSearchResponse(
-                it.t,
-                Id(it.id).toJson()
-            ) {
+            newAnimeSearchResponse(it.t, Id(it.id).toJson()) {
                 posterUrl = posterUrl(it.id)
-
-                posterHeaders = mapOf(
-                    "Referer" to "$mainUrl/home"
-                )
+                posterHeaders = mapOf("Referer" to "$mainUrl/home")
             }
         }
     }
 
-    override suspend fun load(
-        url: String
-    ): LoadResponse? {
+    override suspend fun load(url: String): LoadResponse? {
+        val id = runCatching { parseJson<Id>(url).id }.getOrNull() ?: return null
+        Log.d("NMDebug", "LOAD id=$id")
 
-        val id =
-            runCatching {
-                parseJson<Id>(url).id
-            }.getOrNull()
-                ?: return null
+        val body = siteGet(url = "$mainUrl/mobile/post.php?id=$id&t=$unixTime", referer = "$mainUrl/home")
+        Log.d("NMDebug", "LOAD post bodyLen=${body.length}")
 
-        val body = siteGet(
-            url =
-                "$mainUrl/mobile/post.php?id=$id&t=$unixTime",
-            referer = "$mainUrl/home"
-        )
-
-        val data =
-            try {
-                parseJson<PostData>(body)
-            } catch (_: Exception) {
-                return null
-            }
+        val data = try { parseJson<PostData>(body) } catch (_: Exception) { return null }
+        Log.d("NMDebug", "LOAD title='${data.title}' eps=${data.episodes?.size} seasons=${data.season?.size}")
 
         val episodes = arrayListOf<Episode>()
-
         val title = data.title
 
-        val castList =
-            data.cast
-                ?.split(",")
-                ?.map { it.trim() }
-                ?.filter { it.isNotEmpty() }
-                ?: emptyList()
+        val castList = data.cast?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+        val cast = castList.map { ActorData(Actor(it)) }
+        val genre = data.genre?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
+        val rating = data.match?.replace("IMDb ", "")
 
-        val cast =
-            castList.map {
-                ActorData(Actor(it))
+        val runTime = convertRuntimeToMinutes(data.runtime.toString())
+
+        val suggest = data.suggest?.map {
+            newAnimeSearchResponse("", Id(it.id).toJson()) {
+                posterUrl = posterUrl(it.id)
+                posterHeaders = mapOf("Referer" to "$mainUrl/home")
             }
-
-        val genre =
-            data.genre
-                ?.split(",")
-                ?.map { it.trim() }
-                ?.filter { it.isNotEmpty() }
-
-        val rating =
-            data.match
-                ?.replace("IMDb ", "")
-
-        var runTime: Int = 0
-        runTime = convertRuntimeToMinutes(data.runtime.toString()) ?: 0
-
-        val suggest =
-            data.suggest?.map {
-                newAnimeSearchResponse(
-                    "",
-                    Id(it.id).toJson()
-                ) {
-                    posterUrl = posterUrl(it.id)
-
-                    posterHeaders = mapOf(
-                        "Referer" to "$mainUrl/home"
-                    )
-                }
-            }
-
-        val firstEpisode =
-            data.episodes.firstOrNull()
-
-        if (firstEpisode == null) {
-
-            episodes.add(
-                newEpisode(
-                    LoadData(
-                        title,
-                        id
-                    )
-                ) {
-                    name = data.title
-                }
-            )
-
-        } else {
-
-            data.episodes
-                .filterNotNull()
-                .forEach {
-
-                    episodes.add(
-                        newEpisode(
-                            LoadData(
-                                title,
-                                it.id
-                            )
-                        ) {
-
-                            name = it.t
-
-                            episode =
-                                it.ep
-                                    .replace("E", "")
-                                    .toIntOrNull()
-
-                            season =
-                                it.s
-                                    .replace("S", "")
-                                    .toIntOrNull()
-
-                            posterUrl =
-                                "https://imgcdn.kim/poster/v/150/${it.id}.jpg"
-
-                            var fetchedRunTime: Int = 0
-                            fetchedRunTime = it.time.replace("m", "").toIntOrNull() ?: 0
-                            this.runTime = fetchedRunTime
-                        }
-                    )
-                }
-
-            if (data.nextPageShow == 1) {
-                val nextSeason =
-                    data.nextPageSeason
-
-                if (!nextSeason.isNullOrEmpty()) {
-
-                    episodes.addAll(
-                        getEpisodes(
-                            title = title,
-                            eid = url,
-                            sid = nextSeason,
-                            page = 2
-                        )
-                    )
-                }
-            }
-
-            data.season
-                ?.dropLast(1)
-                ?.forEach {
-
-                    episodes.addAll(
-                        getEpisodes(
-                            title = title,
-                            eid = url,
-                            sid = it.id,
-                            page = 1
-                        )
-                    )
-                }
         }
 
-        val type =
-            if (firstEpisode == null) {
-                TvType.Movie
-            } else {
-                TvType.TvSeries
+        val firstEpisode = data.episodes.firstOrNull()
+
+        if (firstEpisode == null) {
+            episodes.add(newEpisode(LoadData(title, id)) { name = data.title })
+        } else {
+            data.episodes.filterNotNull().forEach {
+                episodes.add(newEpisode(LoadData(title, it.id)) {
+                    name = it.t
+                    episode = it.ep.replace("E", "").toIntOrNull()
+                    season = it.s.replace("S", "").toIntOrNull()
+                    posterUrl = "https://imgcdn.kim/poster/v/150/${it.id}.jpg"
+                    this.runTime = it.time.replace("m", "").toIntOrNull() ?: 0
+                })
             }
 
-        return newTvSeriesLoadResponse(
-            title,
-            url,
-            type,
-            episodes
-        ) {
+            if (data.nextPageShow == 1) {
+                val nextSeason = data.nextPageSeason
+                if (!nextSeason.isNullOrEmpty()) {
+                    episodes.addAll(getEpisodes(title = title, eid = url, sid = nextSeason, page = 2))
+                }
+            }
 
-            posterUrl =
-                posterUrl(id)
+            data.season?.dropLast(1)?.forEach {
+                episodes.addAll(getEpisodes(title = title, eid = url, sid = it.id, page = 1))
+            }
+        }
 
-            backgroundPosterUrl =
-                posterUrl(id)
+        val type = if (firstEpisode == null) TvType.Movie else TvType.TvSeries
 
-            posterHeaders =
-                mapOf(
-                    "Referer" to "$mainUrl/home"
-                )
-
-            plot =
-                data.desc
-
-            year =
-                data.year.toIntOrNull()
-
-            tags =
-                genre
-
-            actors =
-                cast
-
-            score =
-                Score.from10(rating)
-
-            duration =
-                runTime
-
-            contentRating =
-                data.ua
-
-            recommendations =
-                suggest
+        return newTvSeriesLoadResponse(title, url, type, episodes) {
+            posterUrl = posterUrl(id)
+            backgroundPosterUrl = posterUrl(id)
+            posterHeaders = mapOf("Referer" to "$mainUrl/home")
+            plot = data.desc
+            year = data.year.toIntOrNull()
+            tags = genre
+            actors = cast
+            score = Score.from10(rating)
+            duration = runTime
+            contentRating = data.ua
+            recommendations = suggest
         }
     }
 
-    private suspend fun getEpisodes(
-        title: String,
-        eid: String,
-        sid: String,
-        page: Int
-    ): List<Episode> {
-
+    private suspend fun getEpisodes(title: String, eid: String, sid: String, page: Int): List<Episode> {
         val episodes = arrayListOf<Episode>()
-
         var currentPage = page
 
         while (true) {
-
-            val url =
-                "$mainUrl/mobile/episodes.php" +
-                "?s=$sid" +
-                "&series=$eid" +
-                "&t=$unixTime" +
-                "&page=$currentPage"
-
-            val body = siteGet(
-                url = url,
-                referer = "$mainUrl/home"
-            )
-
-            val data =
-                try {
-                    parseJson<EpisodesData>(body)
-                } catch (_: Exception) {
-                    break
-                }
+            val url = "$mainUrl/mobile/episodes.php?s=$sid&series=$eid&t=$unixTime&page=$currentPage"
+            val body = siteGet(url = url, referer = "$mainUrl/home")
+            val data = try { parseJson<EpisodesData>(body) } catch (_: Exception) { break }
 
             data.episodes?.forEach {
-
-                episodes.add(
-                    newEpisode(
-                        LoadData(
-                            title,
-                            it.id
-                        )
-                    ) {
-
-                        name =
-                            it.t
-
-                        episode =
-                            it.ep
-                                .replace("E", "")
-                                .toIntOrNull()
-
-                        season =
-                            it.s
-                                .replace("S", "")
-                                .toIntOrNull()
-
-                        posterUrl =
-                            episodePosterUrl(it.id)
-
-                        var fetchedRunTime: Int = 0
-                        fetchedRunTime = it.time.replace("m", "").toIntOrNull() ?: 0
-                        this.runTime = fetchedRunTime
-                    }
-                )
+                episodes.add(newEpisode(LoadData(title, it.id)) {
+                    name = it.t
+                    episode = it.ep.replace("E", "").toIntOrNull()
+                    season = it.s.replace("S", "").toIntOrNull()
+                    posterUrl = episodePosterUrl(it.id)
+                    this.runTime = it.time.replace("m", "").toIntOrNull() ?: 0
+                })
             }
 
-            if (data.nextPageShow == 0) {
-                break
-            }
-
+            if (data.nextPageShow == 0) break
             currentPage++
         }
-
         return episodes
     }
 
+    // ⭐ CHANGED: X-Requested-With → app.netmirror.nmv2
     private fun playlistHeaders(): Map<String, String> {
         return mapOf(
             "Accept" to "*/*",
             "Referer" to mobileHomeUrl,
             "User-Agent" to defaultUa,
-            "X-Requested-With" to "app.netmirror.netmirrornew",
+            "X-Requested-With" to "app.netmirror.nmv2",
             "Sec-Fetch-Dest" to "empty",
             "Sec-Fetch-Mode" to "cors",
             "Sec-Fetch-Site" to "same-origin"
         )
     }
 
-    private fun playlistCookies(
-        cookie: String
-    ): Map<String, String> {
+    private fun playlistCookies(cookie: String): Map<String, String> {
         return mapOf(
             "t_hash_t" to cookie,
             "ott" to "nf",
@@ -622,44 +338,34 @@ runCatching {
         )
     }
 
-    private fun parsePlaylist(
-        body: String
-    ): JSONArray? {
-
-        if (body.contains("in=unknown::db")) {
-            return null
-        }
-
-        return try {
-            JSONArray(body)
-                .takeIf { it.length() > 0 }
-        } catch (_: Exception) {
-            null
-        }
+    private fun parsePlaylist(body: String): JSONArray? {
+        if (body.contains("in=unknown::db")) return null
+        return try { JSONArray(body).takeIf { it.length() > 0 } } catch (_: Exception) { null }
     }
 
-        override suspend fun loadLinks(
+    override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
 
-        // ID parse karna (Screenshot style combined with safe call)
         val loadData = runCatching { AppUtils.parseJson<LoadData>(data) }.getOrNull() ?: return false
         val id = loadData.id
+        Log.d("NMDebug", "LOADLINKS id=$id title='${loadData.title}'")
 
         var cookieVal = getValidToken()
-
+        if (cookieVal.isEmpty()) cookieVal = bypass(mainUrl)
         if (cookieVal.isEmpty()) {
-            cookieVal = bypass(mainUrl)
-        }
-        if (cookieVal.isEmpty()) {
+            Log.e("NMDebug", "LOADLINKS token empty → return false")
             return false
         }
+        Log.d("NMDebug", "LOADLINKS token len=${cookieVal.length} val=${cookieVal.take(60)}")
 
-        // Netflix ke liye playlist.php (Prime ke liye pv/playlist.php, HotStar ke liye hs/playlist.php)
-        val playlistUrl = "$mainUrl/mobile/playlist.php?id=$id&tm=${System.currentTimeMillis() / 1000}"
+        // ⭐ CHANGED: added t=<title> param
+        val encodedTitle = URLEncoder.encode(loadData.title, "UTF-8")
+        val playlistUrl = "$mainUrl/mobile/playlist.php?id=$id&t=$encodedTitle&tm=${System.currentTimeMillis() / 1000}"
+        Log.d("NMDebug", "LOADLINKS playlistUrl=$playlistUrl")
 
         var response = app.get(
             playlistUrl,
@@ -667,14 +373,17 @@ runCatching {
             cookies = playlistCookies(cookieVal),
             referer = mobileHomeUrl
         )
-
         var rawBody = response.text
+        Log.d("NMDebug", "LOADLINKS playlist status=${response.okhttpResponse.code} bodyLen=${rawBody.length}")
+        Log.d("NMDebug", "LOADLINKS body=${rawBody.take(500).replace("\n", " ")}")
+
         var playlist = parsePlaylist(rawBody)
+        Log.d("NMDebug", "LOADLINKS items=${playlist?.length() ?: -1}")
 
         if (playlist == null) {
+            Log.d("NMDebug", "LOADLINKS retry with force bypass")
             NetflixMirrorStorage.clearCookie()
             cookieVal = bypass(mainUrl, force = true)
-
             if (cookieVal.isEmpty()) return false
 
             response = app.get(
@@ -685,6 +394,7 @@ runCatching {
             )
             rawBody = response.text
             playlist = parsePlaylist(rawBody)
+            Log.d("NMDebug", "LOADLINKS retry items=${playlist?.length() ?: -1}")
         }
 
         if (playlist == null) return false
@@ -694,44 +404,37 @@ runCatching {
         for (i in 0 until playlist.length()) {
             val item = playlist.optJSONObject(i) ?: continue
 
-            // 1. SUBTITLES KA PREFIX LOGIC YAHAN HAI
+            // Subtitles — ⭐ CHANGED: use fixNetMirrorUrl (handles //subscdn.top)
             item.optJSONArray("tracks")?.let { tracks ->
                 for (j in 0 until tracks.length()) {
                     val track = tracks.optJSONObject(j) ?: continue
-
                     if (track.optString("kind").equals("captions", ignoreCase = true)) {
                         val rawFile = track.optString("file").replace("\\", "")
-                        
-                        // YAHAN AADHI LINK THEEK HOGI:
-                        val file = if (rawFile.startsWith("/")) "$mainUrl$rawFile" else rawFile
-                        
+                        val file = fixNetMirrorUrl(rawFile)
                         val label = track.optString("label").ifEmpty { "Subtitle" }
-
                         if (file.isNotBlank()) {
+                            Log.d("NMDebug", "SUB [$label] $file")
                             subtitleCallback(SubtitleFile(label, file))
                         }
                     }
                 }
             }
 
-            // 2. VIDEO LINKS KA PREFIX LOGIC YAHAN HAI
+            // Video — ⭐ CHANGED: use fixNetMirrorUrl + quality from URL q=
             item.optJSONArray("sources")?.let { sources ->
                 for (j in 0 until sources.length()) {
                     val source = sources.optJSONObject(j) ?: continue
-
                     val rawFile = source.optString("file").replace("\\", "")
-                    
-                    // YAHAN AADHI LINK THEEK HOGI:
-                    val file = if (rawFile.startsWith("/")) "$mainUrl$rawFile" else rawFile
-                    
+                    val file = fixNetMirrorUrl(rawFile)
                     val label = source.optString("label").ifEmpty { "Video" }
 
                     if (file.isNotBlank()) {
-                        
-                        // Quality extract kar lete hain pehle ki tarah (optional)
-                        val quality = Regex("""(\d{3,4})p""")
-                            .find(label)?.groupValues?.getOrNull(1)?.toIntOrNull()
-                            ?: Qualities.Unknown.value
+                        val quality =
+                            Regex("""q=(\d{3,4})p""").find(rawFile)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                                ?: Regex("""(\d{3,4})p""").find(label)?.groupValues?.getOrNull(1)?.toIntOrNull()
+                                ?: Qualities.Unknown.value
+
+                        Log.d("NMDebug", "VIDEO [$label q=$quality] $file")
 
                         callback(
                             ExtractorLink(
@@ -740,11 +443,12 @@ runCatching {
                                 url = file,
                                 referer = "$mainUrl/mobile/home?app=1",
                                 quality = quality,
-                                type = if (file.contains(".m3u8", ignoreCase = true)) ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO,
+                                type = if (file.contains(".m3u8", ignoreCase = true))
+                                    ExtractorLinkType.M3U8 else ExtractorLinkType.VIDEO,
                                 headers = mapOf(
                                     "User-Agent" to defaultUa,
-                                    "X-Requested-With" to "app.netmirror.netmirrornew",
-                                    "Cookie" to "t_hash_t=$cookieVal; ott=nf; hd=on", // Prime/HotStar ke liye nf ko pv/hs kar dena
+                                    "X-Requested-With" to "app.netmirror.nmv2",
+                                    "Cookie" to "t_hash_t=$cookieVal; ott=nf; hd=on",
                                     "Referer" to "$mainUrl/mobile/home?app=1"
                                 )
                             )
@@ -755,29 +459,25 @@ runCatching {
             }
         }
 
+        Log.d("NMDebug", "LOADLINKS finished linksFound=$linksFound")
         return linksFound > 0
     }
 
+    // ⭐ CHANGED: X-Requested-With → app.netmirror.nmv2
     @Suppress("ObjectLiteralToLambda")
-    override fun getVideoInterceptor(
-        extractorLink: ExtractorLink
-    ): Interceptor {
+    override fun getVideoInterceptor(extractorLink: ExtractorLink): Interceptor {
         return Interceptor { chain ->
             val request = chain.request()
             val url = request.url.toString()
 
-            // Jab player m3u8 playlist, ts chunks, ya vtt subtitles maange
             if (url.contains(".m3u8") || url.contains(".ts") || url.contains(".vtt")) {
-                
                 val cookieVal = NetflixMirrorStorage.getCookie().first ?: ""
-
+                Log.d("NMDebug", "INTERCEPT url=${url.take(120)}")
                 val newRequest = request.newBuilder()
-                    // YAHAN TACHIYOMI WALE SAME HEADERS HAIN:
-                    .header("Cookie", "t_hash_t=$cookieVal; ott=nf; hd=on") // (PrimeVideo mein pv aur HotStar mein hs kar dena)
-                    .header("X-Requested-With", "app.netmirror.netmirrornew")
+                    .header("Cookie", "t_hash_t=$cookieVal; ott=nf; hd=on")
+                    .header("X-Requested-With", "app.netmirror.nmv2")
                     .header("Referer", "$mainUrl/mobile/home?app=1")
                     .build()
-
                 return@Interceptor chain.proceed(newRequest)
             }
 
@@ -785,13 +485,6 @@ runCatching {
         }
     }
 
-
-    data class Id(
-        val id: String
-    )
-
-    data class LoadData(
-        val title: String,
-        val id: String
-    )
+    data class Id(val id: String)
+    data class LoadData(val title: String, val id: String)
 }
