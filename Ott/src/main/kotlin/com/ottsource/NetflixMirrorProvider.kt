@@ -5,7 +5,6 @@ import OttSource.entities.EpisodesData
 import OttSource.entities.PostData
 import OttSource.entities.SearchData
 
-import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
 import com.lagradost.cloudstream3.utils.*
 import com.lagradost.cloudstream3.utils.AppUtils.toJson
@@ -67,18 +66,9 @@ class NetflixMirrorProvider : MainAPI() {
 
     private suspend fun getValidToken(): String {
         initStorage()
-        val (rawCookie, ts) = NetflixMirrorStorage.getCookie()
-        Log.d("NMDebug", "TOKEN rawCookie=${rawCookie?.take(80)} age=${System.currentTimeMillis() - ts}ms")
-
         val cached = NetflixMirrorStorage.getValidCookie()
-        if (!cached.isNullOrEmpty()) {
-            Log.d("NMDebug", "TOKEN using CACHED=${cached.take(80)}")
-            return cached
-        }
-        Log.d("NMDebug", "TOKEN calling bypass(mainUrl)")
-        val result = bypass(mainUrl)
-        Log.d("NMDebug", "TOKEN bypass returned len=${result.length} val=${result.take(80)}")
-        return result
+        if (!cached.isNullOrEmpty()) return cached
+        return bypass(mainUrl)
     }
 
     private fun siteCookies(token: String): Map<String, String> {
@@ -113,7 +103,6 @@ class NetflixMirrorProvider : MainAPI() {
         extraHeaders: Map<String, String> = emptyMap()
     ): String {
         var token = getValidToken()
-        Log.d("NMDebug", "SITEGET url=$url token=${token.take(40)}")
 
         fun requestHeaders() = browserHeaders + extraHeaders
 
@@ -125,17 +114,12 @@ class NetflixMirrorProvider : MainAPI() {
         )
         var body = response.text
         val http = response.okhttpResponse
-        Log.d("NMDebug", "SITEGET [$url] status=${http.code} bodyLen=${body.length}")
 
         val rejected = isVerificationWall(url, body, http.code, http.request.url.toString())
-        Log.d("NMDebug", "SITEGET rejected=$rejected")
-
         if (!rejected) return body
 
-        Log.d("NMDebug", "SITEGET VERIFICATION WALL → force bypass")
         NetflixMirrorStorage.clearCookie()
         token = bypass(mainUrl, force = true)
-        Log.d("NMDebug", "SITEGET force bypass token len=${token.length} val=${token.take(60)}")
         if (token.isEmpty()) return body
 
         response = app.get(
@@ -166,24 +150,9 @@ class NetflixMirrorProvider : MainAPI() {
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse? {
         runCatching { DesiExtensionPopup.show() }
 
-        Log.d("NMDebug", "=== getMainPage page=$page ===")
-
         val body = siteGet(url = mobileHomeUrl, referer = mobileHomeUrl)
-
-        Log.d("NMDebug", "HOME bodyLen=${body.length}")
-        Log.d("NMDebug", "HOME title=${Regex("<title>([^<]+)</title>").find(body)?.groupValues?.getOrNull(1)}")
-        Log.d("NMDebug", "HOME hasTrayContainer=${body.contains("tray-container")}")
-        Log.d("NMDebug", "HOME hasArticle=${body.contains("<article")}")
-
         val document = Jsoup.parse(body)
-        val containers = document.select(".tray-container, #top10")
-        Log.d("NMDebug", "HOME containersFound=${containers.size}")
-
-        val items = containers.map { it.toHomePageList() }
-        Log.d("NMDebug", "HOME itemsBuilt=${items.size}")
-        items.forEachIndexed { i, list ->
-            Log.d("NMDebug", "HOME [$i] name='${list.name}' count=${list.list.size}")
-        }
+        val items = document.select(".tray-container, #top10").map { it.toHomePageList() }
 
         return newHomePageResponse(items, false)
     }
@@ -223,13 +192,9 @@ class NetflixMirrorProvider : MainAPI() {
 
     override suspend fun load(url: String): LoadResponse? {
         val id = runCatching { parseJson<Id>(url).id }.getOrNull() ?: return null
-        Log.d("NMDebug", "LOAD id=$id")
 
         val body = siteGet(url = "$mainUrl/mobile/post.php?id=$id&t=$unixTime", referer = "$mainUrl/home")
-        Log.d("NMDebug", "LOAD post bodyLen=${body.length}")
-
         val data = try { parseJson<PostData>(body) } catch (_: Exception) { return null }
-        Log.d("NMDebug", "LOAD title='${data.title}' eps=${data.episodes?.size} seasons=${data.season?.size}")
 
         val episodes = arrayListOf<Episode>()
         val title = data.title
@@ -238,7 +203,6 @@ class NetflixMirrorProvider : MainAPI() {
         val cast = castList.map { ActorData(Actor(it)) }
         val genre = data.genre?.split(",")?.map { it.trim() }?.filter { it.isNotEmpty() }
         val rating = data.match?.replace("IMDb ", "")
-
         val runTime = convertRuntimeToMinutes(data.runtime.toString())
 
         val suggest = data.suggest?.map {
@@ -317,7 +281,6 @@ class NetflixMirrorProvider : MainAPI() {
         return episodes
     }
 
-    // ⭐ CHANGED: X-Requested-With → app.netmirror.nmv2
     private fun playlistHeaders(): Map<String, String> {
         return mapOf(
             "Accept" to "*/*",
@@ -352,20 +315,13 @@ class NetflixMirrorProvider : MainAPI() {
 
         val loadData = runCatching { AppUtils.parseJson<LoadData>(data) }.getOrNull() ?: return false
         val id = loadData.id
-        Log.d("NMDebug", "LOADLINKS id=$id title='${loadData.title}'")
 
         var cookieVal = getValidToken()
         if (cookieVal.isEmpty()) cookieVal = bypass(mainUrl)
-        if (cookieVal.isEmpty()) {
-            Log.e("NMDebug", "LOADLINKS token empty → return false")
-            return false
-        }
-        Log.d("NMDebug", "LOADLINKS token len=${cookieVal.length} val=${cookieVal.take(60)}")
+        if (cookieVal.isEmpty()) return false
 
-        // ⭐ CHANGED: added t=<title> param
         val encodedTitle = URLEncoder.encode(loadData.title, "UTF-8")
         val playlistUrl = "$mainUrl/mobile/playlist.php?id=$id&t=$encodedTitle&tm=${System.currentTimeMillis() / 1000}"
-        Log.d("NMDebug", "LOADLINKS playlistUrl=$playlistUrl")
 
         var response = app.get(
             playlistUrl,
@@ -374,14 +330,9 @@ class NetflixMirrorProvider : MainAPI() {
             referer = mobileHomeUrl
         )
         var rawBody = response.text
-        Log.d("NMDebug", "LOADLINKS playlist status=${response.okhttpResponse.code} bodyLen=${rawBody.length}")
-        Log.d("NMDebug", "LOADLINKS body=${rawBody.take(500).replace("\n", " ")}")
-
         var playlist = parsePlaylist(rawBody)
-        Log.d("NMDebug", "LOADLINKS items=${playlist?.length() ?: -1}")
 
         if (playlist == null) {
-            Log.d("NMDebug", "LOADLINKS retry with force bypass")
             NetflixMirrorStorage.clearCookie()
             cookieVal = bypass(mainUrl, force = true)
             if (cookieVal.isEmpty()) return false
@@ -394,7 +345,6 @@ class NetflixMirrorProvider : MainAPI() {
             )
             rawBody = response.text
             playlist = parsePlaylist(rawBody)
-            Log.d("NMDebug", "LOADLINKS retry items=${playlist?.length() ?: -1}")
         }
 
         if (playlist == null) return false
@@ -404,7 +354,6 @@ class NetflixMirrorProvider : MainAPI() {
         for (i in 0 until playlist.length()) {
             val item = playlist.optJSONObject(i) ?: continue
 
-            // Subtitles — ⭐ CHANGED: use fixNetMirrorUrl (handles //subscdn.top)
             item.optJSONArray("tracks")?.let { tracks ->
                 for (j in 0 until tracks.length()) {
                     val track = tracks.optJSONObject(j) ?: continue
@@ -413,14 +362,12 @@ class NetflixMirrorProvider : MainAPI() {
                         val file = fixNetMirrorUrl(rawFile)
                         val label = track.optString("label").ifEmpty { "Subtitle" }
                         if (file.isNotBlank()) {
-                            Log.d("NMDebug", "SUB [$label] $file")
                             subtitleCallback(SubtitleFile(label, file))
                         }
                     }
                 }
             }
 
-            // Video — ⭐ CHANGED: use fixNetMirrorUrl + quality from URL q=
             item.optJSONArray("sources")?.let { sources ->
                 for (j in 0 until sources.length()) {
                     val source = sources.optJSONObject(j) ?: continue
@@ -433,8 +380,6 @@ class NetflixMirrorProvider : MainAPI() {
                             Regex("""q=(\d{3,4})p""").find(rawFile)?.groupValues?.getOrNull(1)?.toIntOrNull()
                                 ?: Regex("""(\d{3,4})p""").find(label)?.groupValues?.getOrNull(1)?.toIntOrNull()
                                 ?: Qualities.Unknown.value
-
-                        Log.d("NMDebug", "VIDEO [$label q=$quality] $file")
 
                         callback(
                             ExtractorLink(
@@ -459,11 +404,9 @@ class NetflixMirrorProvider : MainAPI() {
             }
         }
 
-        Log.d("NMDebug", "LOADLINKS finished linksFound=$linksFound")
         return linksFound > 0
     }
 
-    // ⭐ CHANGED: X-Requested-With → app.netmirror.nmv2
     @Suppress("ObjectLiteralToLambda")
     override fun getVideoInterceptor(extractorLink: ExtractorLink): Interceptor {
         return Interceptor { chain ->
@@ -472,7 +415,6 @@ class NetflixMirrorProvider : MainAPI() {
 
             if (url.contains(".m3u8") || url.contains(".ts") || url.contains(".vtt")) {
                 val cookieVal = NetflixMirrorStorage.getCookie().first ?: ""
-                Log.d("NMDebug", "INTERCEPT url=${url.take(120)}")
                 val newRequest = request.newBuilder()
                     .header("Cookie", "t_hash_t=$cookieVal; ott=nf; hd=on")
                     .header("X-Requested-With", "app.netmirror.nmv2")
