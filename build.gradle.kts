@@ -52,7 +52,7 @@ subprojects {
     cloudstream {
         setRepo(
             System.getenv("GITHUB_REPOSITORY")
-                ?: "https://github.com/SaurabhKaperwan/CSX"
+                ?: "https://github.com/Nilofarwitch-ux/CSX"
         )
         authors = listOf("megix")
     }
