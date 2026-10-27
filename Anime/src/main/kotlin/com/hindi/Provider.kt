@@ -64,9 +64,8 @@ class Cwunchyroll : MainAPI() {
 
     // ═══════════════════ HOMEPAGE ═══════════════════
     override suspend fun getMainPage(page: Int, request: MainPageRequest): HomePageResponse {
-        runCatching { DesiExtensionPopup.show() }
         HomepageDedupTracker.startIfNewSession()
-        val raw = HomePageFetcher.fetch(page, request.data)
+        val raw = fetchCategory(page, request.data)
         val filtered = raw.filter {
             HomepageDedupTracker.tryClaim(
                 title = it.title, year = it.year, format = it.format, sourceId = it.sourceId
@@ -114,7 +113,7 @@ class Cwunchyroll : MainAPI() {
             ) {
                 posterUrl = cover
                 this.year = (item["seasonYear"] as? Number)?.toInt()
-                avg?.let { score = Score.from10(it / 10.0) }
+                avg?.let { score = (it * 100).toInt() }
             }
         }
     }
@@ -160,19 +159,14 @@ class Cwunchyroll : MainAPI() {
         val aniZip = runCatching { fetchAniZip(anilistId = ani.id) }.getOrNull()
 
         val metadata = AnimeMetadataAggregator.aggregate(
-            imdbId = imdbId,
-            tmdbId = tmdbId,
-            mediaType = mediaType,
-            title = title,
-            aniListId = ani.id,
-            preFetchedAniList = ani
+            imdbId = imdbId, tmdbId = tmdbId, mediaType = mediaType,
+            title = title, aniListId = ani.id, preFetchedAniList = ani
         )
 
         val linkData = LoadLinksData(
             title = metadata.title ?: title,
             id = metadata.imdbId ?: tmdbId?.toString() ?: ani.id.toString(),
-            tmdbId = tmdbId,
-            tvtype = mediaType,
+            tmdbId = tmdbId, tvtype = mediaType,
             year = metadata.year?.toString(),
             isAnime = true, isCartoon = true,
             imdb_id = metadata.imdbId,
@@ -194,7 +188,8 @@ class Cwunchyroll : MainAPI() {
                 contentRating = metadata.certification
                 duration = metadata.runtime
                 actors = metadata.cast.map { ActorData(Actor(it.name, it.image), roleString = it.role) }
-                score = Score.from10(metadata.imdbRating ?: metadata.tmdbRating)
+                val sc = metadata.imdbRating ?: metadata.tmdbRating
+                if (sc != null) score = (sc * 1000).toInt()
                 addImdbId(metadata.imdbId)
                 addAniListId(metadata.anilistId)
                 addMalId(metadata.malId)
@@ -263,7 +258,8 @@ class Cwunchyroll : MainAPI() {
                 "Ended", "FINISHED" -> ShowStatus.Completed
                 else -> null
             }
-            score = Score.from10(metadata.imdbRating ?: metadata.tmdbRating)
+            val sc = metadata.imdbRating ?: metadata.tmdbRating
+            if (sc != null) score = (sc * 1000).toInt()
             addImdbId(metadata.imdbId)
             addAniListId(metadata.anilistId)
             addMalId(metadata.malId)
@@ -280,22 +276,21 @@ class Cwunchyroll : MainAPI() {
             .parsed<TmdbDetails>() ?: return emptyList()
         val seasonCount = series.number_of_seasons ?: return emptyList()
         val episodes = mutableListOf<Episode>()
-        var absolute = 1
+        var absEp = 1
 
         for (s in 1..seasonCount) {
             val season = app.get("${ApiConstants.TMDB_BASE}/tv/$tmdbId/season/$s?api_key=${ApiConstants.TMDB_KEY}")
                 .parsed<TmdbSeasonResponse>() ?: continue
             season.episodes.forEach { ep ->
-                val zipEp = aniZip?.episodes?.get(absolute.toString())
+                val zipEp = aniZip?.episodes?.get(absEp.toString())
+                val epScore = ep.vote_average ?: zipEp?.rating?.toDoubleOrNull()
                 episodes.add(newEpisode(
                     LoadLinksData(
                         title = metadata.title ?: "Unknown",
                         id = metadata.imdbId ?: tmdbId.toString(),
-                        tmdbId = tmdbId,
-                        tvtype = "tv",
+                        tmdbId = tmdbId, tvtype = "tv",
                         year = metadata.year?.toString(),
-                        season = ep.season_number,
-                        episode = ep.episode_number,
+                        season = ep.season_number, episode = ep.episode_number,
                         firstAired = ep.air_date,
                         isAnime = true, isCartoon = true,
                         imdb_id = metadata.imdbId,
@@ -311,14 +306,14 @@ class Cwunchyroll : MainAPI() {
                     this.name = ep.name?.takeIf { it.isNotBlank() }
                         ?: zipEp?.title?.get("en")
                         ?: zipEp?.title?.get("x-jat")
-                        ?: "Episode $absolute"
+                        ?: "Episode $absEp"
                     this.description = ep.overview?.takeIf { it.isNotBlank() } ?: zipEp?.overview
                     this.posterUrl = ep.still_path?.let { "${ApiConstants.TMDB_BACKDROP}$it" } ?: zipEp?.image
-                    this.score = Score.from10(ep.vote_average ?: zipEp?.rating?.toDoubleOrNull())
+                    if (epScore != null) this.score = (epScore * 1000).toInt()
                     this.runTime = ep.runtime ?: zipEp?.runtime
                     addDate(ep.air_date)
                 }
-                absolute++
+                absEp++
             }
         }
         return episodes
@@ -336,6 +331,7 @@ class Cwunchyroll : MainAPI() {
 
         return (1..total).map { ep ->
             val zipEp = aniZip?.episodes?.get(ep.toString())
+            val zipScore = zipEp?.rating?.toDoubleOrNull()
             newEpisode(
                 LoadLinksData(
                     title = metadata.title ?: "Unknown",
@@ -362,7 +358,7 @@ class Cwunchyroll : MainAPI() {
                     ?: ani.coverImage?.extraLarge
                     ?: ani.coverImage?.large
                 runTime = zipEp?.runtime
-                score = zipEp?.rating?.toDoubleOrNull()?.let { Score.from10(it) }
+                if (zipScore != null) score = (zipScore * 1000).toInt()
             }
         }
     }
@@ -418,14 +414,16 @@ class Cwunchyroll : MainAPI() {
             .parsed<ExternalIdsResponse>()?.anilist
     }.getOrNull()
 
-    // ═══════════════════ LOAD LINKS ═══════════════════
+    // ═══════════════════ LOAD LINKS (STUB) ═══════════════════
     override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
-    ): Boolean = com.hindi.loadLinks(
-        data = data, isCasting = isCasting,
-        subtitleCallback = subtitleCallback, callback = callback
-    )
+    ): Boolean {
+        // TODO: Add your extraction logic here (each source call must invoke callback(link))
+        val req = parseJson<LoadLinksData>(data) ?: return false
+        // Example: callback(ExtractorLink("SourceName", "https://...", ...))
+        return false
+    }
 }
