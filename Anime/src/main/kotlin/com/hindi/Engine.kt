@@ -11,14 +11,11 @@ import org.json.JSONObject
 import java.util.Calendar
 import java.util.Collections
 
-// ═══════════════════ HELPERS ═══════════════════
-fun getCurrentAniListSeason(): String {
-    return when (Calendar.getInstance().get(Calendar.MONTH)) {
-        Calendar.DECEMBER, Calendar.JANUARY, Calendar.FEBRUARY -> "WINTER"
-        Calendar.MARCH, Calendar.APRIL, Calendar.MAY -> "SPRING"
-        Calendar.JUNE, Calendar.JULY, Calendar.AUGUST -> "SUMMER"
-        else -> "FALL"
-    }
+fun getCurrentAniListSeason(): String = when (Calendar.getInstance().get(Calendar.MONTH)) {
+    Calendar.DECEMBER, Calendar.JANUARY, Calendar.FEBRUARY -> "WINTER"
+    Calendar.MARCH, Calendar.APRIL, Calendar.MAY -> "SPRING"
+    Calendar.JUNE, Calendar.JULY, Calendar.AUGUST -> "SUMMER"
+    else -> "FALL"
 }
 
 fun getCurrentYear(): Int = Calendar.getInstance().get(Calendar.YEAR)
@@ -37,7 +34,6 @@ suspend fun fetchAniZip(anilistId: Int? = null, kitsuId: Int? = null): AniZipRes
     }.getOrNull()
 }
 
-// ═══════════════════ DEDUP TRACKER ═══════════════════
 object HomepageDedupTracker {
     private val seenKeys: MutableSet<String> = Collections.synchronizedSet(mutableSetOf())
     private var lastAccessTime: Long = 0L
@@ -77,7 +73,6 @@ object HomepageDedupTracker {
     }
 }
 
-// ═══════════════════ CATEGORY ITEM ═══════════════════
 data class CategoryItem(
     val title: String,
     val year: Int?,
@@ -87,42 +82,41 @@ data class CategoryItem(
     val response: SearchResponse
 )
 
-// ═══════════════════ HOMEPAGE FETCHERS (MainAPI extensions) ═══════════════════
-suspend fun MainAPI.fetchCategory(page: Int, categoryKey: String): List<CategoryItem> = when {
-    categoryKey.startsWith("anilist_") -> fetchAniListCategory(page, categoryKey)
-    categoryKey.startsWith("jikan_")   -> fetchJikanCategory(page, categoryKey)
-    categoryKey.startsWith("kitsu_")   -> fetchKitsuCategory(page, categoryKey)
-    categoryKey.startsWith("tmdb_")    -> fetchTmdbCategory(page, categoryKey)
-    else -> emptyList()
-}
-
 private const val ANILIST_PER_PAGE = 30
 private const val JIKAN_PER_PAGE = 25
 private const val KITSU_PER_PAGE = 30
+
+suspend fun MainAPI.fetchCategory(page: Int, categoryKey: String): List<CategoryItem> = when {
+    categoryKey.startsWith("anilist_") -> fetchAniListCategory(page, categoryKey)
+    categoryKey.startsWith("jikan_") -> fetchJikanCategory(page, categoryKey)
+    categoryKey.startsWith("kitsu_") -> fetchKitsuCategory(page, categoryKey)
+    categoryKey.startsWith("tmdb_") -> fetchTmdbCategory(page, categoryKey)
+    else -> emptyList()
+}
 
 private suspend fun MainAPI.fetchAniListCategory(page: Int, key: String): List<CategoryItem> {
     val season = getCurrentAniListSeason()
     val year = getCurrentYear()
     val args = when (key) {
         "anilist_trending" -> "type: ANIME, sort: TRENDING_DESC"
-        "anilist_season"   -> "type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC"
-        "anilist_top"      -> "type: ANIME, sort: SCORE_DESC"
+        "anilist_season" -> "type: ANIME, season: $season, seasonYear: $year, sort: POPULARITY_DESC"
+        "anilist_top" -> "type: ANIME, sort: SCORE_DESC"
         "anilist_upcoming" -> "type: ANIME, status: NOT_YET_RELEASED, sort: POPULARITY_DESC"
-        "anilist_airing"   -> "type: ANIME, status: RELEASING, sort: POPULARITY_DESC"
-        "anilist_movies"   -> "type: ANIME, format: MOVIE, sort: POPULARITY_DESC"
-        "anilist_ova"      -> "type: ANIME, format: OVA, sort: POPULARITY_DESC"
-        "anilist_ona"      -> "type: ANIME, format: ONA, sort: POPULARITY_DESC"
-        "anilist_action"   -> "type: ANIME, genre: \"Action\", sort: POPULARITY_DESC"
-        "anilist_comedy"   -> "type: ANIME, genre: \"Comedy\", sort: POPULARITY_DESC"
-        "anilist_romance"  -> "type: ANIME, genre: \"Romance\", sort: POPULARITY_DESC"
-        "anilist_fantasy"  -> "type: ANIME, genre: \"Fantasy\", sort: POPULARITY_DESC"
-        "anilist_scifi"    -> "type: ANIME, genre: \"Sci-Fi\", sort: POPULARITY_DESC"
-        "anilist_horror"   -> "type: ANIME, genre: \"Horror\", sort: POPULARITY_DESC"
-        "anilist_school"   -> "type: ANIME, tag: \"School\", sort: POPULARITY_DESC"
-        "anilist_psych"    -> "type: ANIME, tag: \"Psychological\", sort: POPULARITY_DESC"
-        "anilist_isekai"   -> "type: ANIME, tag: \"Isekai\", sort: POPULARITY_DESC"
-        "anilist_shounen"  -> "type: ANIME, tag: \"Shounen\", sort: POPULARITY_DESC"
-        "anilist_hidden"   -> "type: ANIME, averageScore_greater: 80, popularity_lesser: 50000, sort: SCORE_DESC"
+        "anilist_airing" -> "type: ANIME, status: RELEASING, sort: POPULARITY_DESC"
+        "anilist_movies" -> "type: ANIME, format: MOVIE, sort: POPULARITY_DESC"
+        "anilist_ova" -> "type: ANIME, format: OVA, sort: POPULARITY_DESC"
+        "anilist_ona" -> "type: ANIME, format: ONA, sort: POPULARITY_DESC"
+        "anilist_action" -> "type: ANIME, genre: \"Action\", sort: POPULARITY_DESC"
+        "anilist_comedy" -> "type: ANIME, genre: \"Comedy\", sort: POPULARITY_DESC"
+        "anilist_romance" -> "type: ANIME, genre: \"Romance\", sort: POPULARITY_DESC"
+        "anilist_fantasy" -> "type: ANIME, genre: \"Fantasy\", sort: POPULARITY_DESC"
+        "anilist_scifi" -> "type: ANIME, genre: \"Sci-Fi\", sort: POPULARITY_DESC"
+        "anilist_horror" -> "type: ANIME, genre: \"Horror\", sort: POPULARITY_DESC"
+        "anilist_school" -> "type: ANIME, tag: \"School\", sort: POPULARITY_DESC"
+        "anilist_psych" -> "type: ANIME, tag: \"Psychological\", sort: POPULARITY_DESC"
+        "anilist_isekai" -> "type: ANIME, tag: \"Isekai\", sort: POPULARITY_DESC"
+        "anilist_shounen" -> "type: ANIME, tag: \"Shounen\", sort: POPULARITY_DESC"
+        "anilist_hidden" -> "type: ANIME, averageScore_greater: 80, popularity_lesser: 50000, sort: SCORE_DESC"
         else -> return emptyList()
     }
     val gql = """
@@ -151,7 +145,6 @@ private suspend fun MainAPI.fetchAniListCategory(page: Int, key: String): List<C
             ?: return@mapNotNull null
         val poster = ((item["coverImage"] as? Map<*, *>)?.get("extraLarge"))?.toString()
         val yr = (item["seasonYear"] as? Number)?.toInt()
-        val avgScore = (item["averageScore"] as? Number)?.toDouble()
 
         val resp = newAnimeSearchResponse(
             title,
@@ -160,7 +153,6 @@ private suspend fun MainAPI.fetchAniListCategory(page: Int, key: String): List<C
         ) {
             posterUrl = poster
             this.year = yr
-            avgScore?.let { score = (it * 100).toInt() }
         }
         CategoryItem(title, yr, HomepageDedupTracker.normalizeFormat(rawFormat),
             "anilist", "anilist_$id", resp)
@@ -170,8 +162,8 @@ private suspend fun MainAPI.fetchAniListCategory(page: Int, key: String): List<C
 private suspend fun MainAPI.fetchJikanCategory(page: Int, key: String): List<CategoryItem> {
     val endpoint = when (key) {
         "jikan_favorites" -> "${ApiConstants.JIKAN_API}/top/anime?filter=favorite&page=$page&limit=$JIKAN_PER_PAGE"
-        "jikan_members"   -> "${ApiConstants.JIKAN_API}/top/anime?filter=bypopularity&page=$page&limit=$JIKAN_PER_PAGE"
-        "jikan_airing"    -> "${ApiConstants.JIKAN_API}/top/anime?filter=airing&page=$page&limit=$JIKAN_PER_PAGE"
+        "jikan_members" -> "${ApiConstants.JIKAN_API}/top/anime?filter=bypopularity&page=$page&limit=$JIKAN_PER_PAGE"
+        "jikan_airing" -> "${ApiConstants.JIKAN_API}/top/anime?filter=airing&page=$page&limit=$JIKAN_PER_PAGE"
         else -> return emptyList()
     }
     delay(340)
@@ -187,7 +179,6 @@ private suspend fun MainAPI.fetchJikanCategory(page: Int, key: String): List<Cat
             ?.get("large_image_url")?.toString()
         val yr = (item["year"] as? Number)?.toInt()
         val rawType = item["type"]?.toString() ?: "TV"
-        val scoreVal = (item["score"] as? Number)?.toDouble()
 
         val resp = newAnimeSearchResponse(
             title,
@@ -196,7 +187,6 @@ private suspend fun MainAPI.fetchJikanCategory(page: Int, key: String): List<Cat
         ) {
             posterUrl = poster
             this.year = yr
-            scoreVal?.let { score = (it * 1000).toInt() }
         }
         CategoryItem(title, yr, HomepageDedupTracker.normalizeFormat(rawType),
             "jikan", "mal_$malId", resp)
@@ -207,8 +197,8 @@ private suspend fun MainAPI.fetchKitsuCategory(page: Int, key: String): List<Cat
     val offset = (page - 1) * KITSU_PER_PAGE
     val url = when (key) {
         "kitsu_trending" -> "${ApiConstants.KITSU_EDGE_API}/anime?sort=-userCount&page%5Blimit%5D=$KITSU_PER_PAGE&page%5Boffset%5D=$offset"
-        "kitsu_top"      -> "${ApiConstants.KITSU_EDGE_API}/anime?sort=-averageRating&page%5Blimit%5D=$KITSU_PER_PAGE&page%5Boffset%5D=$offset"
-        "kitsu_airing"   -> "${ApiConstants.KITSU_EDGE_API}/anime?filter%5Bstatus%5D=current&sort=-userCount&page%5Blimit%5D=$KITSU_PER_PAGE&page%5Boffset%5D=$offset"
+        "kitsu_top" -> "${ApiConstants.KITSU_EDGE_API}/anime?sort=-averageRating&page%5Blimit%5D=$KITSU_PER_PAGE&page%5Boffset%5D=$offset"
+        "kitsu_airing" -> "${ApiConstants.KITSU_EDGE_API}/anime?filter%5Bstatus%5D=current&sort=-userCount&page%5Blimit%5D=$KITSU_PER_PAGE&page%5Boffset%5D=$offset"
         else -> return emptyList()
     }
     val json = runCatching { app.get(url).text }.getOrNull() ?: return emptyList()
@@ -226,7 +216,6 @@ private suspend fun MainAPI.fetchKitsuCategory(page: Int, key: String): List<Cat
             ?.let { (it["medium"] ?: it["small"])?.toString() }
         val rawType = attrs["subtype"]?.toString() ?: "TV"
         val yr = attrs["startDate"]?.toString()?.take(4)?.toIntOrNull()
-        val avg = (attrs["averageRating"] as? String)?.toDoubleOrNull()?.div(10.0)
 
         val resp = newAnimeSearchResponse(
             title,
@@ -235,7 +224,6 @@ private suspend fun MainAPI.fetchKitsuCategory(page: Int, key: String): List<Cat
         ) {
             posterUrl = poster
             this.year = yr
-            avg?.let { score = (it * 1000).toInt() }
         }
         CategoryItem(title, yr, HomepageDedupTracker.normalizeFormat(rawType),
             "kitsu", "kitsu_$kitsuId", resp)
@@ -245,9 +233,9 @@ private suspend fun MainAPI.fetchKitsuCategory(page: Int, key: String): List<Cat
 private suspend fun MainAPI.fetchTmdbCategory(page: Int, key: String): List<CategoryItem> {
     val base = "?api_key=${ApiConstants.TMDB_KEY}&with_original_language=ja&page=$page"
     val url = when (key) {
-        "tmdb_grossing"  -> "${ApiConstants.TMDB_BASE}/discover/movie$base&sort_by=revenue.desc"
+        "tmdb_grossing" -> "${ApiConstants.TMDB_BASE}/discover/movie$base&sort_by=revenue.desc"
         "tmdb_hindi_dub" -> "${ApiConstants.TMDB_BASE}/discover/movie$base&with_spoken_languages=hi&sort_by=popularity.desc"
-        "tmdb_recent"    -> {
+        "tmdb_recent" -> {
             val thirty = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).apply {
                 timeZone = java.util.TimeZone.getTimeZone("UTC")
             }.format(java.util.Date(System.currentTimeMillis() - 30L * 24 * 60 * 60 * 1000))
@@ -265,7 +253,6 @@ private suspend fun MainAPI.fetchTmdbCategory(page: Int, key: String): List<Cate
             ?: return@mapNotNull null
         val poster = item["poster_path"]?.toString()?.let { "${ApiConstants.TMDB_POSTER}$it" }
         val yr = item["release_date"]?.toString()?.take(4)?.toIntOrNull()
-        val rating = (item["vote_average"] as? Number)?.toDouble()
 
         val resp = newAnimeSearchResponse(
             title,
@@ -274,13 +261,11 @@ private suspend fun MainAPI.fetchTmdbCategory(page: Int, key: String): List<Cate
         ) {
             posterUrl = poster
             this.year = yr
-            rating?.let { score = (it * 1000).toInt() }
         }
         CategoryItem(title, yr, "MOVIE", "tmdb", "tmdb_$tmdbId", resp)
     }
 }
 
-// ═══════════════════ AGGREGATOR ═══════════════════
 object AnimeMetadataAggregator {
 
     data class CountryInfo(val name: String, val isoCode: String? = null)
@@ -326,10 +311,10 @@ object AnimeMetadataAggregator {
         preFetchedAniList: AniListMedia? = null
     ): AggregatedMetadata = coroutineScope {
 
-        val tmdbDeferred     = async { fetchTmdb(tmdbId, mediaType) }
+        val tmdbDeferred = async { fetchTmdb(tmdbId, mediaType) }
         val cinemetaDeferred = async { fetchCinemeta(imdbId, mediaType) }
-        val idsDeferred      = async { fetchExternalIds(imdbId) }
-        val aniListDeferred  = async {
+        val idsDeferred = async { fetchExternalIds(imdbId) }
+        val aniListDeferred = async {
             when {
                 preFetchedAniList != null -> preFetchedAniList
                 aniListId != null -> fetchAniList(aniListId)
@@ -337,19 +322,19 @@ object AnimeMetadataAggregator {
             }
         }
 
-        val tmdb     = tmdbDeferred.await()
+        val tmdb = tmdbDeferred.await()
         val cinemeta = cinemetaDeferred.await()
-        val ids      = idsDeferred.await()
-        val aniList  = aniListDeferred.await()
+        val ids = idsDeferred.await()
+        val aniList = aniListDeferred.await()
 
-        val castDeferred      = async {
+        val castDeferred = async {
             buildTmdbCast(tmdb).ifEmpty {
                 buildAniListCast(aniList).ifEmpty { fetchTvdbCast(imdbId, mediaType) }
             }
         }
         val providersDeferred = async { fetchTmdbWatchProviders(tmdbId, mediaType) }
 
-        val cast      = castDeferred.await()
+        val cast = castDeferred.await()
         val providers = providersDeferred.await()
 
         val isMovie = mediaType.equals("movie", true) || aniList?.format == "MOVIE"
