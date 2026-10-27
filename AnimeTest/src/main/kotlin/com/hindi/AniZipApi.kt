@@ -5,15 +5,14 @@ import com.lagradost.cloudstream3.app
 
 private val aniZipMapper = jacksonObjectMapper()
 
-suspend fun fetchAniZip(anilistId: Int?): AniZipResponse? {
-    if (anilistId == null) return null
-
-    // Network
+suspend fun fetchAniZip(anilistId: Int? = null, kitsuId: Int? = null): AniZipResponse? {
+    val query = when {
+        anilistId != null -> "anilist_id=$anilistId"
+        kitsuId != null -> "kitsu_id=$kitsuId"
+        else -> return null
+    }
     return runCatching {
-        val json = app.get(
-            "${ApiConstants.ANIZIP_API}/mappings?anilist_id=$anilistId"
-        ).text
-
+        val json = app.get("${ApiConstants.ANIZIP_API}/mappings?$query").text
         aniZipMapper.readValue(json, AniZipResponse::class.java)
     }.getOrNull()
 }
