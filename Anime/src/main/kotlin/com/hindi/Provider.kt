@@ -259,55 +259,57 @@ class Cwunchyroll : MainAPI() {
     }
 
     private suspend fun loadTmdbEpisodes(
-        tmdbId: Int,
-        metadata: AnimeMetadataAggregator.AggregatedMetadata,
-        aniZip: AniZipResponse?
-    ): List<Episode> {
-        val series = app.get("${ApiConstants.TMDB_BASE}/tv/$tmdbId?api_key=${ApiConstants.TMDB_KEY}")
-            .parsed<TmdbDetails>() ?: return emptyList()
-        val seasonCount = series.number_of_seasons ?: return emptyList()
-        val episodes = mutableListOf<Episode>()
-        var zipIdx = 1
+    tmdbId: Int,
+    metadata: AnimeMetadataAggregator.AggregatedMetadata,
+    aniZip: AniZipResponse?
+): List<Episode> {
+    val series = app.get("${ApiConstants.TMDB_BASE}/tv/$tmdbId?api_key=${ApiConstants.TMDB_KEY}")
+        .parsed<TmdbDetails>() ?: return emptyList()
+    val seasonCount = series.number_of_seasons ?: return emptyList()
+    val episodes = mutableListOf<Episode>()
+    var zipIdx = 1
 
-        for (s in 1..seasonCount) {
-            val season = app.get("${ApiConstants.TMDB_BASE}/tv/$tmdbId/season/$s?api_key=${ApiConstants.TMDB_KEY}")
-                .parsed<TmdbSeasonResponse>() ?: continue
-            for (ep in season.episodes) {
-                val zipEp = aniZip?.episodes?.get(zipIdx.toString())
-                episodes.add(newEpisode(
-                    LoadLinksData(
-                        title = metadata.title ?: "Unknown",
-                        id = metadata.imdbId ?: tmdbId.toString(),
-                        tmdbId = tmdbId, tvtype = "tv",
-                        year = metadata.year?.toString(),
-                        season = ep.season_number, episode = ep.episode_number,
-                        firstAired = ep.air_date,
-                        isAnime = true, isCartoon = true,
-                        imdb_id = metadata.imdbId,
-                        anilistId = metadata.anilistId,
-                        malId = metadata.malId,
-                        kitsuId = metadata.kitsuId?.toString(),
-                        orgTitle = metadata.originalTitle,
-                        airedYear = metadata.year
-                    ).toJson()
-                ) {
-                    this.season = ep.season_number
-                    this.episode = ep.episode_number
-                    this.name = ep.name?.takeIf { it.isNotBlank() }
-                        ?: zipEp?.title?.get("en")
-                        ?: zipEp?.title?.get("x-jat")
-                        ?: "Episode ${ep.episode_number}"
-                    this.description = ep.overview?.takeIf { it.isNotBlank() } ?: zipEp?.overview
-                    this.posterUrl = ep.still_path?.let { "${ApiConstants.TMDB_BACKDROP}$it" } ?: zipEp?.image
-                    this.runTime = ep.runtime ?: zipEp?.runtime
-                    addDate(ep.air_date)
-                }
-                zipIdx++
-            }
+    for (s in 1..seasonCount) {
+        val season = app.get("${ApiConstants.TMDB_BASE}/tv/$tmdbId/season/$s?api_key=${ApiConstants.TMDB_KEY}")
+            .parsed<TmdbSeasonResponse>() ?: continue
+        for (ep in season.episodes) {
+            val zipEp = aniZip?.episodes?.get(zipIdx.toString())
+
+            val linkData = LoadLinksData(
+                title = metadata.title ?: "Unknown",
+                id = metadata.imdbId ?: tmdbId.toString(),
+                tmdbId = tmdbId, tvtype = "tv",
+                year = metadata.year?.toString(),
+                season = ep.season_number, episode = ep.episode_number,
+                firstAired = ep.air_date,
+                isAnime = true, isCartoon = true,
+                imdb_id = metadata.imdbId,
+                anilistId = metadata.anilistId,
+                malId = metadata.malId,
+                kitsuId = metadata.kitsuId?.toString(),
+                orgTitle = metadata.originalTitle,
+                airedYear = metadata.year
+            )
+
+            val epObj = newEpisode(linkData.toJson())
+            epObj.season = ep.season_number
+            epObj.episode = ep.episode_number
+            epObj.name = ep.name?.takeIf { it.isNotBlank() }
+                ?: zipEp?.title?.get("en")
+                ?: zipEp?.title?.get("x-jat")
+                ?: "Episode ${ep.episode_number}"
+            epObj.description = ep.overview?.takeIf { it.isNotBlank() } ?: zipEp?.overview
+            epObj.posterUrl = ep.still_path?.let { "${ApiConstants.TMDB_BACKDROP}$it" } ?: zipEp?.image
+            epObj.runTime = ep.runtime ?: zipEp?.runtime
+            epObj.addDate(ep.air_date)
+
+            episodes.add(epObj)
+            zipIdx++
         }
-        return episodes
     }
-
+    return episodes
+    }
+}
     private fun buildAniListEpisodes(
         ani: AniListMedia,
         metadata: AnimeMetadataAggregator.AggregatedMetadata,
