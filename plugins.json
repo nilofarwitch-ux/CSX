@@ -1,5 +1,27 @@
 [
     {
+        "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/Anime.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "Anime",
+        "internalName": "Anime",
+        "authors": [
+            "Faisal"
+        ],
+        "description": "testing",
+        "fileSize": 109508,
+        "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
+        "language": "en",
+        "tvTypes": [
+            "Movie",
+            "TvSeries",
+            "Anime"
+        ],
+        "iconUrl": "https://animevilla.org/wp-content/uploads/2026/04/fevicon.png",
+        "apiVersion": 1,
+        "fileHash": "sha256-9691d64f31ee016d9a99f3b30a8fe4df371d080cfef17aa6cf149f7319bc246d"
+    },
+    {
         "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/Bollyflix.cs3",
         "status": 1,
         "version": 33,
