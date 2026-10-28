@@ -227,7 +227,6 @@ class Cwunchyroll : MainAPI() {
         sourceUrl: String,
         aniZip: AniZipResponse?
     ): LoadResponse {
-
         val episodes = if (tmdbId != null) {
             val tmdbEp = loadTmdbEpisodes(tmdbId, metadata, aniZip)
             if (tmdbEp.isNotEmpty()) tmdbEp else buildAniListEpisodes(ani, metadata, tmdbId, aniZip)
@@ -259,57 +258,56 @@ class Cwunchyroll : MainAPI() {
     }
 
     private suspend fun loadTmdbEpisodes(
-    tmdbId: Int,
-    metadata: AnimeMetadataAggregator.AggregatedMetadata,
-    aniZip: AniZipResponse?
-): List<Episode> {
-    val series = app.get("${ApiConstants.TMDB_BASE}/tv/$tmdbId?api_key=${ApiConstants.TMDB_KEY}")
-        .parsed<TmdbDetails>() ?: return emptyList()
-    val seasonCount = series.number_of_seasons ?: return emptyList()
-    val episodes = mutableListOf<Episode>()
-    var zipIdx = 1
+        tmdbId: Int,
+        metadata: AnimeMetadataAggregator.AggregatedMetadata,
+        aniZip: AniZipResponse?
+    ): List<Episode> {
+        val series = app.get("${ApiConstants.TMDB_BASE}/tv/$tmdbId?api_key=${ApiConstants.TMDB_KEY}")
+            .parsed<TmdbDetails>() ?: return emptyList()
+        val seasonCount = series.number_of_seasons ?: return emptyList()
+        val episodes = mutableListOf<Episode>()
+        var zipIdx = 1
 
-    for (s in 1..seasonCount) {
-        val season = app.get("${ApiConstants.TMDB_BASE}/tv/$tmdbId/season/$s?api_key=${ApiConstants.TMDB_KEY}")
-            .parsed<TmdbSeasonResponse>() ?: continue
-        for (ep in season.episodes) {
-            val zipEp = aniZip?.episodes?.get(zipIdx.toString())
-
-            val linkData = LoadLinksData(
-                title = metadata.title ?: "Unknown",
-                id = metadata.imdbId ?: tmdbId.toString(),
-                tmdbId = tmdbId, tvtype = "tv",
-                year = metadata.year?.toString(),
-                season = ep.season_number, episode = ep.episode_number,
-                firstAired = ep.air_date,
-                isAnime = true, isCartoon = true,
-                imdb_id = metadata.imdbId,
-                anilistId = metadata.anilistId,
-                malId = metadata.malId,
-                kitsuId = metadata.kitsuId?.toString(),
-                orgTitle = metadata.originalTitle,
-                airedYear = metadata.year
-            )
-
-            val epObj = newEpisode(linkData.toJson())
-            epObj.season = ep.season_number
-            epObj.episode = ep.episode_number
-            epObj.name = ep.name?.takeIf { it.isNotBlank() }
-                ?: zipEp?.title?.get("en")
-                ?: zipEp?.title?.get("x-jat")
-                ?: "Episode ${ep.episode_number}"
-            epObj.description = ep.overview?.takeIf { it.isNotBlank() } ?: zipEp?.overview
-            epObj.posterUrl = ep.still_path?.let { "${ApiConstants.TMDB_BACKDROP}$it" } ?: zipEp?.image
-            epObj.runTime = ep.runtime ?: zipEp?.runtime
-            epObj.addDate(ep.air_date)
-
-            episodes.add(epObj)
-            zipIdx++
+        for (s in 1..seasonCount) {
+            val season = app.get("${ApiConstants.TMDB_BASE}/tv/$tmdbId/season/$s?api_key=${ApiConstants.TMDB_KEY}")
+                .parsed<TmdbSeasonResponse>() ?: continue
+            for (ep in season.episodes) {
+                val zipEp = aniZip?.episodes?.get(zipIdx.toString())
+                val linkData = LoadLinksData(
+                    title = metadata.title ?: "Unknown",
+                    id = metadata.imdbId ?: tmdbId.toString(),
+                    tmdbId = tmdbId, tvtype = "tv",
+                    year = metadata.year?.toString(),
+                    season = ep.season_number, episode = ep.episode_number,
+                    firstAired = ep.air_date,
+                    isAnime = true, isCartoon = true,
+                    imdb_id = metadata.imdbId,
+                    anilistId = metadata.anilistId,
+                    malId = metadata.malId,
+                    kitsuId = metadata.kitsuId?.toString(),
+                    orgTitle = metadata.originalTitle,
+                    airedYear = metadata.year
+                )
+                episodes.add(
+                    newEpisode(linkData.toJson()) {
+                        this.season = ep.season_number
+                        this.episode = ep.episode_number
+                        this.name = ep.name?.takeIf { it.isNotBlank() }
+                            ?: zipEp?.title?.get("en")
+                            ?: zipEp?.title?.get("x-jat")
+                            ?: "Episode ${ep.episode_number}"
+                        this.description = ep.overview?.takeIf { it.isNotBlank() } ?: zipEp?.overview
+                        this.posterUrl = ep.still_path?.let { "${ApiConstants.TMDB_BACKDROP}$it" } ?: zipEp?.image
+                        this.runTime = ep.runtime ?: zipEp?.runtime
+                        addDate(ep.air_date)
+                    }
+                )
+                zipIdx++
+            }
         }
+        return episodes
     }
-    return episodes
-    }
-}
+
     private fun buildAniListEpisodes(
         ani: AniListMedia,
         metadata: AnimeMetadataAggregator.AggregatedMetadata,
@@ -322,32 +320,31 @@ class Cwunchyroll : MainAPI() {
 
         return (1..total).map { epNum ->
             val zipEp = aniZip?.episodes?.get(epNum.toString())
-            newEpisode(
-                LoadLinksData(
-                    title = metadata.title ?: "Unknown",
-                    id = metadata.imdbId ?: (tmdbId?.toString() ?: ani.id.toString()),
-                    tmdbId = tmdbId, tvtype = "tv",
-                    year = ani.seasonYear?.toString(),
-                    season = 1, episode = epNum,
-                    isAnime = true, isCartoon = true,
-                    imdb_id = metadata.imdbId,
-                    anilistId = ani.id, malId = ani.idMal,
-                    kitsuId = metadata.kitsuId?.toString(),
-                    orgTitle = metadata.originalTitle,
-                    airedYear = ani.seasonYear
-                ).toJson()
-            ) {
-                season = 1
-                episode = epNum
-                name = zipEp?.title?.get("en")
+            val linkData = LoadLinksData(
+                title = metadata.title ?: "Unknown",
+                id = metadata.imdbId ?: (tmdbId?.toString() ?: ani.id.toString()),
+                tmdbId = tmdbId, tvtype = "tv",
+                year = ani.seasonYear?.toString(),
+                season = 1, episode = epNum,
+                isAnime = true, isCartoon = true,
+                imdb_id = metadata.imdbId,
+                anilistId = ani.id, malId = ani.idMal,
+                kitsuId = metadata.kitsuId?.toString(),
+                orgTitle = metadata.originalTitle,
+                airedYear = ani.seasonYear
+            )
+            newEpisode(linkData.toJson()) {
+                this.season = 1
+                this.episode = epNum
+                this.name = zipEp?.title?.get("en")
                     ?: zipEp?.title?.get("x-jat")
                     ?: zipEp?.title?.get("ja")
                     ?: "Episode $epNum"
-                description = zipEp?.overview
-                posterUrl = zipEp?.image
+                this.description = zipEp?.overview
+                this.posterUrl = zipEp?.image
                     ?: ani.coverImage?.extraLarge
                     ?: ani.coverImage?.large
-                runTime = zipEp?.runtime
+                this.runTime = zipEp?.runtime
             }
         }
     }
@@ -408,8 +405,8 @@ class Cwunchyroll : MainAPI() {
         subtitleCallback: (SubtitleFile) -> Unit,
         callback: (ExtractorLink) -> Unit
     ): Boolean {
-        // TODO: yahan apna extraction logic daal do
         val req = parseJson<LoadLinksData>(data) ?: return false
+        // TODO: yahan apna extraction logic daal do
         return false
     }
 }
