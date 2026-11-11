@@ -1,4 +1,4 @@
-package com.HdHub4u
+package com.4khdhub
 
 import android.content.Context
 import com.lagradost.cloudstream3.plugins.CloudstreamPlugin
