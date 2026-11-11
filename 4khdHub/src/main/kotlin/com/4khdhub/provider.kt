@@ -1,6 +1,6 @@
 @file:Suppress("DEPRECATION","DEPRECATION_ERROR","UNUSED_PARAMETER","UNUSED_VARIABLE","unused")
 
-package com.4khdhub
+package com.fourkhdhub
 
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
@@ -15,7 +15,7 @@ import java.net.URI
 import java.net.URLEncoder
 
 // ============================================================
-// DATA CLASSES — now LOCAL (no HDHub4uProvider dependency)
+// DATA CLASSES (self-contained — no HDHub4uProvider dependency)
 // ============================================================
 
 data class EpisodeLink(val url: String = "", val label: String = "")
@@ -339,18 +339,20 @@ class FourKHDHubProvider : MainAPI() {
 
             if (allFiles.isNotEmpty()) {
                 val grouped = allFiles.groupBy { it.season to it.episode }
-                val episodes = grouped.toSortedMap(compareBy({ it.first.first }, { it.first.second }))
-                    .map { (key, files) ->
-                        val (season, epNum) = key
-                        val epInfo = episodesMeta.find { it.season == season && it.episode == epNum }
-                        newEpisode(files.flatMap { it.links }.distinctBy { it.url }) {
-                            this.name = epInfo?.name?.takeIf { it.isNotBlank() }
-                                ?: epInfo?.title?.takeIf { it.isNotBlank() } ?: "Episode $epNum"
-                            this.season = season; this.episode = epNum
-                            this.posterUrl = epInfo?.thumbnail?.takeIf { it.isNotBlank() } ?: finalPoster
-                            this.description = epInfo?.overview?.takeIf { it.isNotBlank() }
-                        }
+                // FIXED: Int has no .first — use Pair.first / Pair.second directly
+                val episodes = grouped.toSortedMap(
+                    compareBy({ it.first }, { it.second })
+                ).map { (key, files) ->
+                    val (season, epNum) = key
+                    val epInfo = episodesMeta.find { it.season == season && it.episode == epNum }
+                    newEpisode(files.flatMap { it.links }.distinctBy { it.url }) {
+                        this.name = epInfo?.name?.takeIf { it.isNotBlank() }
+                            ?: epInfo?.title?.takeIf { it.isNotBlank() } ?: "Episode $epNum"
+                        this.season = season; this.episode = epNum
+                        this.posterUrl = epInfo?.thumbnail?.takeIf { it.isNotBlank() } ?: finalPoster
+                        this.description = epInfo?.overview?.takeIf { it.isNotBlank() }
                     }
+                }
                 return newTvSeriesLoadResponse(finalTitle, url, TvType.TvSeries, episodes) {
                     this.posterUrl = finalPoster; this.plot = finalPlot; this.tags = tags
                     this.year = year; this.score = score?.let { Score.from10(it) }
