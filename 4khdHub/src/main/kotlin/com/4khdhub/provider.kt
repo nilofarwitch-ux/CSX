@@ -1,5 +1,6 @@
 @file:Suppress("DEPRECATION","DEPRECATION_ERROR","UNUSED_PARAMETER","UNUSED_VARIABLE","unused")
-package com.HdHub4u
+
+package com.4khdhub
 
 import com.lagradost.api.Log
 import com.lagradost.cloudstream3.*
@@ -13,8 +14,64 @@ import org.jsoup.nodes.Element
 import java.net.URI
 import java.net.URLEncoder
 
-// ==================== HELPERS (same as File 1) ====================
+// ============================================================
+// DATA CLASSES — now LOCAL (no HDHub4uProvider dependency)
+// ============================================================
+
 data class EpisodeLink(val url: String = "", val label: String = "")
+
+data class Meta(
+    val id: String? = null,
+    val imdb_id: String? = null,
+    val type: String? = null,
+    val poster: String? = null,
+    val background: String? = null,
+    val moviedb_id: Int? = null,
+    val name: String? = null,
+    val description: String? = null,
+    val genre: List<String>? = null,
+    val genres: List<String>? = null,
+    val releaseInfo: String? = null,
+    val status: String? = null,
+    val runtime: String? = null,
+    val cast: List<String>? = null,
+    val language: String? = null,
+    val country: String? = null,
+    val imdbRating: String? = null,
+    val year: String? = null,
+    val videos: List<EpisodeDetails>? = null
+)
+
+data class EpisodeDetails(
+    val id: String? = null,
+    val name: String? = null,
+    val title: String? = null,
+    val season: Int = 0,
+    val episode: Int = 0,
+    val released: String? = null,
+    val firstAired: String? = null,
+    val overview: String? = null,
+    val thumbnail: String? = null,
+    val moviedb_id: Int? = null,
+    val imdb_id: String? = null,
+    val imdbSeason: Int? = null,
+    val imdbEpisode: Int? = null
+)
+
+data class ResponseData(val meta: Meta? = null)
+
+data class FourKEpisodeFile(
+    val season: Int,
+    val episode: Int,
+    val quality: String,
+    val size: String,
+    val filename: String,
+    val links: List<EpisodeLink>
+)
+
+// ============================================================
+// HELPERS
+// ============================================================
 
 fun base64DecodeLocal(input: String): String {
     if (input.isBlank()) return ""
@@ -46,10 +103,16 @@ fun getIndexQuality(str: String?): Int {
     Regex("""(\d{3,4})[pP]""").find(str)?.groupValues?.getOrNull(1)?.toIntOrNull()?.let { return it }
     val l = str.lowercase()
     return when {
-        l.contains("8k") -> 4320; l.contains("4k") -> 2160; l.contains("2k") -> 1440
+        l.contains("8k") -> 4320
+        l.contains("4k") -> 2160
+        l.contains("2k") -> 1440
         else -> Qualities.Unknown.value
     }
 }
+
+// ============================================================
+// GREENMOTORS / HUDCDN RESOLVER
+// ============================================================
 
 suspend fun getRedirectLinks(url: String, referer: String? = null): String {
     return try {
@@ -78,6 +141,10 @@ suspend fun getRedirectLinks(url: String, referer: String? = null): String {
     } catch (e: Exception) { "" }
 }
 
+// ============================================================
+// URL ROTATION CACHE
+// ============================================================
+
 object HDHubUrlCache {
     private var cache: Map<String, String>? = null
     private var lastFetch = 0L
@@ -103,11 +170,9 @@ object HDHubUrlCache {
 suspend fun getLatestBaseUrl(baseUrl: String, source: String): String =
     HDHubUrlCache.get(source, baseUrl)
 
-// ==================== DUPLICATE TRACKER ====================
-data class FourKEpisodeFile(
-    val season: Int, val episode: Int, val quality: String,
-    val size: String, val filename: String, val links: List<EpisodeLink>
-)
+// ============================================================
+// DUPLICATE TRACKER
+// ============================================================
 
 object FourKHDHubDuplicateTracker {
     private var lastReset = System.currentTimeMillis()
@@ -124,7 +189,10 @@ object FourKHDHubDuplicateTracker {
     }
 }
 
-// ==================== PROVIDER ====================
+// ============================================================
+// PROVIDER
+// ============================================================
+
 class FourKHDHubProvider : MainAPI() {
     override var mainUrl = "https://4khdhub.one"
     override var name = "4KHDHub"
@@ -208,20 +276,23 @@ class FourKHDHubProvider : MainAPI() {
         }
         val isSeries = url.contains("-series-", true) || hasSeriesPattern
 
-        var finalTitle = rawTitle; var finalPlot = rawPlot
-        var finalPoster = rawPoster; var finalBackdrop = rawPoster
+        var finalTitle = rawTitle
+        var finalPlot = rawPlot
+        var finalPoster = rawPoster
+        var finalBackdrop = rawPoster
         var year: Int? = Regex("""\((\d{4})\)""").find(rawTitle)?.groupValues?.getOrNull(1)?.toIntOrNull()
             ?: Regex("""\b(19|20)\d{2}\b""").find(rawTitle)?.value?.toIntOrNull()
-        var score: Double? = null; var tags: List<String> = emptyList()
+        var score: Double? = null
+        var tags: List<String> = emptyList()
         var cast: List<String> = emptyList()
-        var episodesMeta: List<HDHub4uProvider.EpisodeDetails> = emptyList()
+        var episodesMeta: List<EpisodeDetails> = emptyList()
 
         if (imdbId != null) {
             val type = if (isSeries) "series" else "movie"
             val json = runCatching {
                 app.get("https://v3-cinemeta.strem.io/meta/$type/$imdbId.json").text
             }.getOrNull()
-            tryParseJson<HDHub4uProvider.ResponseData>(json ?: "")?.meta?.let { meta ->
+            tryParseJson<ResponseData>(json ?: "")?.meta?.let { meta ->
                 finalTitle = meta.name?.takeIf { it.isNotBlank() } ?: finalTitle
                 finalPlot = meta.description ?: finalPlot
                 finalPoster = meta.poster?.takeIf { it.isNotBlank() } ?: finalPoster
@@ -429,7 +500,10 @@ class FourKHDHubProvider : MainAPI() {
     }
 }
 
-// ==================== EXTRACTORS (copied — same as File 1) ====================
+// ============================================================
+// EXTRACTORS
+// ============================================================
+
 class VCloud : HubCloud() {
     override val name: String = "V-Cloud"
     override val mainUrl: String = "https://vcloud.*"
@@ -596,7 +670,10 @@ open class FastDlServer : ExtractorApi() {
     }
 }
 
-// ============ PLAYDRIVE (source prefix) ============
+// ============================================================
+// PLAYDRIVE (source prefix "4KHDHub")
+// ============================================================
+
 class PlayDrive(
     private val label: String = "",
     private val sourceName: String = ""
