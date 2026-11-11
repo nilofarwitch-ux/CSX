@@ -1,26 +1,5 @@
 [
     {
-        "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/4khdHub.cs3",
-        "status": 1,
-        "version": 2,
-        "name": "4khdHub",
-        "internalName": "4khdHub",
-        "authors": [
-            "Faisal"
-        ],
-        "description": "HDHub4u: Download & Stream Latest Bollywood, Hollywood, South Hindi, Hindi Dubbed Movies & Web Series in 480p, 720p, 1080p & 4K \u2014 with direct HubCloud, HubDrive & PlayDrive links.",
-        "fileSize": 71932,
-        "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
-        "language": "hi",
-        "tvTypes": [
-            "Movie",
-            "TvSeries"
-        ],
-        "iconUrl": "https://raw.githubusercontent.com/Faisal0786/Desi/main/Icons/hdhub4u.png?utm_source=chatgpt.com\u2060",
-        "apiVersion": 1,
-        "fileHash": "sha256-c2de8a5762a8069ccfc0d32bae7d18bbf97e04bc60781ec6f4768aca22eec7c3"
-    },
-    {
         "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/Bollyflix.cs3",
         "status": 1,
         "version": 33,
