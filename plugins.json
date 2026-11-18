@@ -1,5 +1,28 @@
 [
     {
+        "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/4khdHub.cs3",
+        "status": 1,
+        "version": 1,
+        "name": "4khdHub",
+        "internalName": "4khdHub",
+        "authors": [
+            "megix"
+        ],
+        "description": "Movies and Series upto 4K",
+        "fileSize": 26052,
+        "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
+        "language": "hi",
+        "tvTypes": [
+            "TvSeries",
+            "Movie",
+            "AsianDrama",
+            "Anime"
+        ],
+        "iconUrl": "https://raw.githubusercontent.com/SaurabhKaperwan/CSX/refs/heads/master/Bollyflix/icon.png",
+        "apiVersion": 1,
+        "fileHash": "sha256-9a2b4d6e144d5a5caed05d1c20e1bb077d43dcfb2c780c58a7e3505af7b0c4dc"
+    },
+    {
         "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/Bollyflix.cs3",
         "status": 1,
         "version": 33,
