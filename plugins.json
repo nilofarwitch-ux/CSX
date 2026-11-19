@@ -136,28 +136,5 @@
         "iconUrl": "https://github.com/SaurabhKaperwan/CSX/raw/refs/heads/master/VegaMovies/icon.jpg",
         "apiVersion": 1,
         "fileHash": "sha256-4a27739053a54257e59ad7bfaa9bff50ea828fcbc9105d085dd96ed7e2a208f5"
-    },
-    {
-        "url": "https://raw.githubusercontent.com/nilofarwitch-ux/CSX/builds/z.cs3",
-        "status": 1,
-        "version": 3,
-        "name": "z",
-        "internalName": "z",
-        "authors": [
-            "megix"
-        ],
-        "description": "Movies and Series upto 4K",
-        "fileSize": 66401,
-        "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
-        "language": "hi",
-        "tvTypes": [
-            "TvSeries",
-            "Movie",
-            "AsianDrama",
-            "Anime"
-        ],
-        "iconUrl": "https://raw.githubusercontent.com/SaurabhKaperwan/CSX/refs/heads/master/Bollyflix/icon.png",
-        "apiVersion": 1,
-        "fileHash": "sha256-f8988b4dcd883864af70a73c55fa23bb67ee7043382e4e6cff3a600e5bbf0d81"
     }
 ]
