@@ -340,7 +340,7 @@ class ZeeFliz4K : MainAPI() {
         return finalEpisodes
     }
 
-    override suspend fun loadLinks(
+        override suspend fun loadLinks(
         data: String,
         isCasting: Boolean,
         subtitleCallback: (SubtitleFile) -> Unit,
@@ -351,7 +351,6 @@ class ZeeFliz4K : MainAPI() {
         val seenResolvedUrls = ConcurrentHashMap.newKeySet<String>()
         val seenStreamUrls = ConcurrentHashMap.newKeySet<String>()
 
-        // Safe parallel execution (amap + runCatching + per-item timeout)
         links.amap { entry ->
             runCatching {
                 withTimeoutOrNull(15_000L) {
@@ -364,13 +363,18 @@ class ZeeFliz4K : MainAPI() {
                         resolvedUrl
                     }
 
-                    // Duplicate resolved URLs skip karna
                     if (!seenResolvedUrls.add(extractorUrl)) return@withTimeoutOrNull
 
                     val inferredQuality = getIndexQuality(entry.quality)
+                    val collected = mutableListOf<ExtractorLink>()
 
-                    // ExtractorLink wrapper for clean naming & stream deduplication
-                    val formattedCallback: (ExtractorLink) -> Unit = { link ->
+                    loadExtractor(extractorUrl, entry.url, subtitleCallback) { link ->
+                        synchronized(collected) {
+                            collected.add(link)
+                        }
+                    }
+
+                    for (link in collected) {
                         if (seenStreamUrls.add(link.url)) {
                             val serverTag = link.source.ifBlank { entry.host }
                             val cleanDisplayName = listOfNotNull(
@@ -380,7 +384,10 @@ class ZeeFliz4K : MainAPI() {
                                 serverTag.takeIf { it.isNotBlank() }
                             ).joinToString(" ")
 
-                            val finalQuality = if (link.quality == Qualities.Unknown.value && inferredQuality != Qualities.Unknown.value) {
+                            val finalQuality = if (
+                                link.quality == Qualities.Unknown.value &&
+                                inferredQuality != Qualities.Unknown.value
+                            ) {
                                 inferredQuality
                             } else {
                                 link.quality
@@ -388,10 +395,10 @@ class ZeeFliz4K : MainAPI() {
 
                             callback.invoke(
                                 newExtractorLink(
-                                    source = serverTag,
-                                    name = cleanDisplayName.ifBlank { link.name },
-                                    url = link.url,
-                                    type = link.type
+                                    serverTag,
+                                    cleanDisplayName.ifBlank { link.name },
+                                    link.url,
+                                    link.type
                                 ) {
                                     this.quality = finalQuality
                                     this.referer = link.referer
@@ -401,8 +408,6 @@ class ZeeFliz4K : MainAPI() {
                             )
                         }
                     }
-
-                    loadExtractor(extractorUrl, entry.url, subtitleCallback, formattedCallback)
                 }
             }
         }
