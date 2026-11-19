@@ -147,7 +147,7 @@
             "megix"
         ],
         "description": "Movies and Series upto 4K",
-        "fileSize": 66627,
+        "fileSize": 66401,
         "repositoryUrl": "https://github.com/nilofarwitch-ux/CSX",
         "language": "hi",
         "tvTypes": [
@@ -158,6 +158,6 @@
         ],
         "iconUrl": "https://raw.githubusercontent.com/SaurabhKaperwan/CSX/refs/heads/master/Bollyflix/icon.png",
         "apiVersion": 1,
-        "fileHash": "sha256-1a3a5ca2200c463c638bb9ebe164ca9db94710debf68d3f4b195105f4d714868"
+        "fileHash": "sha256-f8988b4dcd883864af70a73c55fa23bb67ee7043382e4e6cff3a600e5bbf0d81"
     }
 ]
