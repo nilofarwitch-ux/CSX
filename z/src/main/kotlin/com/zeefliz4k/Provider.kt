@@ -32,13 +32,10 @@ class ZeeFliz4K : MainAPI() {
 
     override val mainPage = mainPageOf(
         "$mainUrl/" to "Latest Releases",
-        "$mainUrl/category/movies/" to "Latest Movies",
-        "$mainUrl/category/hindi/" to "Hindi Movies",
-        "$mainUrl/category/english/" to "English Movies",
+        
+        
         "$mainUrl/category/series/" to "Web Series",
-        "$mainUrl/category/action-series/" to "Action Series",
-        "$mainUrl/category/korean/" to "Korean Series",
-        "$mainUrl/category/drama-series/" to "Drama Series",
+        
         "$mainUrl/category/anime/" to "Anime",
         "$mainUrl/category/imax/" to "IMAX"
     )
